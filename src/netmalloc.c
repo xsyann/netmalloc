@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:27 2014 xsyann
-** Last update Wed May 14 16:50:33 2014 xsyann
+** Last update Fri May 16 22:17:45 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -14,12 +14,15 @@
 #include <linux/slab.h>
 
 #include "syscall.h"
+#include "memory.h"
 #include "netmalloc.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR(NETMALLOC_AUTHOR);
 MODULE_DESCRIPTION(NETMALLOC_DESC);
 MODULE_VERSION(NETMALLOC_VERSION);
+
+static struct vm_area_struct *vma; /* Handle one vma */
 
 static void netmalloc_vm_open(struct vm_area_struct *area)
 {
@@ -28,7 +31,7 @@ static void netmalloc_vm_open(struct vm_area_struct *area)
 
 static void netmalloc_vm_close(struct vm_area_struct *area)
 {
-        PR_INFO("open");
+        PR_INFO("close");
 }
 
 static int netmalloc_vm_fault(struct vm_area_struct *area, struct vm_fault *vmf)
@@ -43,38 +46,17 @@ static struct vm_operations_struct netmalloc_vm_ops = {
         .fault = netmalloc_vm_fault
 };
 
-static int create_vm_area(struct vm_area_struct **vma)
-{
-        *vma = kmalloc(sizeof(**vma), GFP_KERNEL);
-        if (*vma == NULL)
-                return -ENOMEM;
-        INIT_LIST_HEAD(&(*vma)->anon_vma_chain);
-        (*vma)->vm_mm = current->mm;
-/*      (*vma)->vm_start =
-        (*vma)->vm_end = */
-        (*vma)->vm_flags = VM_READ | VM_WRITE | VM_EXEC;
-        (*vma)->vm_ops = &netmalloc_vm_ops;
-        return 0;
-}
-
 static void *netmalloc_syscall(unsigned long size)
 {
-        struct vm_area_struct *vma;
 
-        PR_INFO("called with a size of : %ld\n", size);
-        PR_INFO("current process: %s, PID: %d", current->comm, current->pid);
+        PR_INFO("Called with a size of : %ld\n", size);
+        PR_INFO("Current process: %s, PID: %d", current->comm, current->pid);
 
-        if (current->mm)
-        {
-                long start = current->mm->mmap->vm_start;
-                long end = current->mm->mmap->vm_end;
-                PR_INFO("start : %ld, end : %ld", start, end);
-        } else
-                PR_INFO("mm NULL");
-
-        if (create_vm_area(&vma) < 0)
+        vma = add_vma(current, &netmalloc_vm_ops);
+        if (vma == NULL) {
+                PR_WARNING(NETMALLOC_WARN_VMA);
                 return NULL;
-        /* insert_vm_struct(current, vma);*/
+        }
         return NULL;
 }
 

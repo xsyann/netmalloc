@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Wed May 14 16:51:59 2014 xsyann
+** Last update Fri May 16 22:18:47 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -32,5 +32,8 @@ int main(void)
         printf("Stack var:  %p\n", &size);
         free(heap);
         printf("Netmalloc return %p\n", netmalloc(size));
+/*        int *t = 0x3ff000;
+          t[0] = 1; */
+/*        while (1); */
         return 0;
 }
