@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:53 2014 xsyann
-** Last update Fri May 16 18:20:01 2014 xsyann
+** Last update Sat May 17 15:33:47 2014 xsyann
 */
 
 #ifndef         __NETMALLOC_H__
@@ -21,6 +21,7 @@
 
 #define NETMALLOC_WARN_SYMNOTFOUND "insert_vm_struct symbol not found"
 #define NETMALLOC_WARN_VMA "Unable to create vm area"
+#define NETMALLOC_WARN_PAGE "Unable to get a memory page"
 
 #define PR_WARNING(ERR, ...) \
         (printk(KERN_WARNING "%s: error: " ERR "\n", NETMALLOC_MODNAME, ##__VA_ARGS__))

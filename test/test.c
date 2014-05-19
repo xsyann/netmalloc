@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Fri May 16 22:18:47 2014 xsyann
+** Last update Mon May 19 13:17:27 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -21,19 +21,32 @@ void *netmalloc(unsigned long size)
         return (void *)syscall(NETMALLOC_SYSCALL, size);
 }
 
+void dump_buffer(char *buffer, size_t size)
+{
+        size_t i;
+
+        for (i = 0; i < size; ++i) {
+                if (i % 30 == 0)
+                        printf("\n");
+                printf("%d ", buffer[i]);
+        }
+        printf("\n");
+}
+
 int main(void)
 {
         static int foo = 1;
-        int size = 2048;
+        int size = 512;
         void *heap = malloc(1);
 
         printf("Static var: %p\n", &foo);
         printf("Heap var:   %p\n", heap);
         printf("Stack var:  %p\n", &size);
         free(heap);
-        printf("Netmalloc return %p\n", netmalloc(size));
-/*        int *t = 0x3ff000;
-          t[0] = 1; */
-/*        while (1); */
+        char *buffer = netmalloc(size);
+        printf("Netmalloc return %p\n", buffer);
+        buffer[2] = 42;
+        dump_buffer(buffer, size);
+/*        while (1);*/
         return 0;
 }
