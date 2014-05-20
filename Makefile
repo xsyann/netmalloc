@@ -5,7 +5,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Fri May  9 11:31:36 2014 xsyann
-## Last update Fri May 16 18:14:21 2014 xsyann
+## Last update Tue May 20 04:28:42 2014 xsyann
 ##
 
 TARGET	= netmalloc
@@ -14,7 +14,7 @@ obj-m	+= $(TARGET).o
 
 SRC = src
 
-$(TARGET)-objs := $(SRC)/netmalloc.o $(SRC)/syscall.o $(SRC)/memory.o
+$(TARGET)-objs := $(SRC)/netmalloc.o $(SRC)/syscall.o $(SRC)/vma.o $(SRC)/area.o
 
 CURRENT = $(shell uname -r)
 KDIR	= /lib/modules/$(CURRENT)/build

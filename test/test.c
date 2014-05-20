@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Mon May 19 13:17:27 2014 xsyann
+** Last update Tue May 20 06:02:55 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -36,7 +36,7 @@ void dump_buffer(char *buffer, size_t size)
 int main(void)
 {
         static int foo = 1;
-        int size = 512;
+        int size = 5102;
         void *heap = malloc(1);
 
         printf("Static var: %p\n", &foo);
@@ -46,7 +46,16 @@ int main(void)
         char *buffer = netmalloc(size);
         printf("Netmalloc return %p\n", buffer);
         buffer[2] = 42;
+        buffer[12] = 255;
+        buffer[4098] = 18;
         dump_buffer(buffer, size);
-/*        while (1);*/
+        buffer[42] = 1;
+        buffer[4099] = 2;
+        dump_buffer(buffer, size);
+
+        char *buffer1 = netmalloc(512);
+        buffer1[1] = 2;
+        dump_buffer(buffer1, 512);
+/*        while (1); */
         return 0;
 }
