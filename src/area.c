@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Tue May 20 04:59:32 2014 xsyann
+** Last update Wed May 21 17:26:49 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -94,7 +94,7 @@ static struct area_struct *get_vma_container(unsigned long size,
                 if (area->pid == task->pid) {
                         if (area->free_space >= size) /* Enough free space */
                                 return area;
-                        else if (extend_vma(area, size)) /* Extend vma */
+                        else if (extend_vma(area, size) == 0) /* Extend vma */
                                 return area;
                 }
         }
@@ -128,6 +128,25 @@ struct region_struct *create_region(unsigned long size,
 void init_area_list(struct area_struct *area_list)
 {
         INIT_LIST_HEAD(&area_list->list);
+}
+
+void remove_vma_from_area_list(struct area_struct *area_list,
+                               struct vm_area_struct *vma)
+{
+        struct area_struct *area, *tmp_area;
+        struct region_struct *region, *tmp_region;
+
+        list_for_each_entry_safe(area, tmp_area, &area_list->list, list) {
+                if (area->vma == vma) {
+                        list_for_each_entry_safe(region, tmp_region,
+                                                 &area->regions.list, list) {
+                                list_del(&region->list);
+                                kfree(region);
+                        }
+                        list_del(&area->list);
+                        kfree(area);
+                }
+        }
 }
 
 void remove_area_list(struct area_struct *area_list)

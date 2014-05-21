@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:53 2014 xsyann
-** Last update Wed May 21 11:30:29 2014 xsyann
+** Last update Wed May 21 15:39:31 2014 xsyann
 */
 
 #ifndef         __NETMALLOC_H__
@@ -18,6 +18,8 @@ struct mapped_buffer
         void *buffer;
         struct vm_area_struct *vma;
         unsigned long start;
+        pid_t pid;
+        struct list_head list;
 };
 
 typedef void zap_page_range_prot(struct vm_area_struct *, unsigned long,

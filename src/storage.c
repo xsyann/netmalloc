@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 11:11:01 2014 xsyann
-** Last update Wed May 21 11:35:23 2014 xsyann
+** Last update Wed May 21 17:27:46 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -37,20 +37,22 @@ void network_release(void)
 
 /* Return kernel buffer corresponding to address.
  * If not found and create == 1, create a new one. */
-static struct kernel_buffer_list *get_kernel_buffer(unsigned long address,
+static struct kernel_buffer_list *get_kernel_buffer(pid_t pid, unsigned long address,
                                                     int create)
 {
         struct kernel_buffer_list *kb = NULL;
 
         list_for_each_entry(kb, &kernel_buffer_list->list, list) {
-                if (kb->address == address)
+                if (kb->address == address && kb->pid == pid)
                         return kb;
         }
+        kb = NULL;
         if (create) {
-                kb = kmalloc(sizeof(*kb), GFP_KERNEL);
+                kb = kzalloc(sizeof(*kb), GFP_KERNEL);
                 if (kb == NULL)
                         return NULL;
                 kb->address = address;
+                kb->pid = pid;
                 kb->buffer = NULL;
                 INIT_LIST_HEAD(&kb->list);
                 list_add_tail(&kb->list, &kernel_buffer_list->list);
@@ -58,7 +60,7 @@ static struct kernel_buffer_list *get_kernel_buffer(unsigned long address,
         return kb;
 }
 
-int kernel_save(unsigned long address, void *buffer)
+int kernel_save(pid_t pid, unsigned long address, void *buffer)
 {
         struct kernel_buffer_list *kb;
 
@@ -71,11 +73,11 @@ int kernel_save(unsigned long address, void *buffer)
         if (kernel_buffer_list == NULL)
                 return -ENOMEM;
 
-        kb = get_kernel_buffer(address, 1);
+        kb = get_kernel_buffer(pid, address, 1);
         if (kb == NULL)
                 return -ENOMEM;
 
-        PR_DEBUG("Save buffer at %016lx %p", address, buffer);
+        PR_DEBUG("Save buffer at %016lx %p, pid = %d", address, buffer, pid);
 
         /* If buffer doesn't exist, create it and copy */
         if (kb->buffer == NULL) {
@@ -88,16 +90,18 @@ int kernel_save(unsigned long address, void *buffer)
         return 0;
 }
 
-int kernel_load(unsigned long address, void *buffer)
+int kernel_load(pid_t pid, unsigned long address, void *buffer)
 {
-        struct kernel_buffer_list *kb;
+        struct kernel_buffer_list *kb = NULL;
 
         if (kernel_buffer_list != NULL) {
-                kb = get_kernel_buffer(address, 0);
+                kb = get_kernel_buffer(pid, address, 0);
                 if (kb && kb->buffer) {
                         memcpy(buffer, kb->buffer, PAGE_SIZE);
-                        PR_DEBUG("Load buffer at %016lx %p", address, buffer);
-                }
+                        PR_DEBUG("Load buffer at %016lx %p, pid = %d",
+                                 address, buffer, pid);
+                } else
+                        memset(buffer, 0, PAGE_SIZE);
         }
         return 0;
 }
@@ -105,8 +109,7 @@ int kernel_load(unsigned long address, void *buffer)
 void kernel_release(void)
 {
         struct kernel_buffer_list *kb, *tmp;
-        if (kernel_buffer_list)
-        {
+        if (kernel_buffer_list) {
                 list_for_each_entry_safe(kb, tmp,
                                          &kernel_buffer_list->list, list) {
                         if (kb->buffer)

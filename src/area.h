@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:26:59 2014 xsyann
-** Last update Tue May 20 04:58:19 2014 xsyann
+** Last update Wed May 21 15:18:56 2014 xsyann
 */
 
 #ifndef         __AREA_H__
@@ -33,6 +33,8 @@ struct area_struct
 
 void init_area_list(struct area_struct *area_list);
 void remove_area_list(struct area_struct *area_list);
+void remove_vma_from_area_list(struct area_struct *area_list,
+                               struct vm_area_struct *vma);
 struct region_struct *create_region(unsigned long size,
                                     struct task_struct *task,
                                     struct area_struct *area_list,

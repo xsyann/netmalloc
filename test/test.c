@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Wed May 21 11:41:52 2014 xsyann
+** Last update Wed May 21 17:16:45 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -47,7 +47,7 @@ int main(void)
         printf("Heap var:   %p\n", heap);
         printf("Stack var:  %p\n", &size);
         free(heap);
-/*        char *buffer = netmalloc(size);
+        char *buffer = netmalloc(size);
         printf("Netmalloc return %p\n", buffer);
         buffer[2] = 42;
         buffer[12] = 255;
@@ -59,13 +59,14 @@ int main(void)
 
         char *buffer1 = netmalloc(512);
         buffer1[1] = 2;
-        dump_buffer(buffer1, 512);*/
+        dump_buffer(buffer1, 512);
 
 /*        while (1); */
-        char *buffer = netmalloc(5120);
-        memset(buffer, 'A', 5120);
-        sprintf(buffer, "toto %d", 42);
-        sprintf(buffer + 4090, "titi %d %s", 1337, "foobar");
-        dump_buffer(buffer, 5120);
+        char *buffer2 = netmalloc(15120);
+        memset(buffer2, 'B', 5120);
+        sprintf(buffer2, "tutu %d", 22);
+        sprintf(buffer2 + 4090, "tata %d %s", 18, "barfoo");
+        sprintf(buffer2 + 14090, "hello %d %s", 42, "foobar");
+        dump_buffer(buffer2, 15120);
         return 0;
 }
