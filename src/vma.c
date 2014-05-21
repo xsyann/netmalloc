@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May 16 18:00:15 2014 xsyann
-** Last update Tue May 20 05:03:58 2014 xsyann
+** Last update Tue May 20 21:53:08 2014 xsyann
 */
 
 #include <linux/mm_types.h>
@@ -28,8 +28,6 @@ static unsigned long get_last_vma_end(struct mm_struct *mm)
         }
         return end;
 }
-
-struct kmem_cache *vm_area_cachep;
 
 static int create_vm_area_struct(struct task_struct *task,
                                  struct vm_area_struct **vma,
