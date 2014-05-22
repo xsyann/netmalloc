@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:26:59 2014 xsyann
-** Last update Wed May 21 15:18:56 2014 xsyann
+** Last update Thu May 22 14:47:20 2014 xsyann
 */
 
 #ifndef         __AREA_H__
@@ -15,6 +15,7 @@
 
 struct region_struct
 {
+        int free;
         unsigned long size;
         struct list_head list;
         void *virtual_start;
@@ -39,5 +40,7 @@ struct region_struct *create_region(unsigned long size,
                                     struct task_struct *task,
                                     struct area_struct *area_list,
                                     struct vm_operations_struct *vm_ops);
+void remove_region(pid_t pid, unsigned long address,
+                   struct area_struct *area_list);
 
 #endif          /* __AREA_H__ */

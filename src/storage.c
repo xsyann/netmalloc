@@ -5,28 +5,32 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 11:11:01 2014 xsyann
-** Last update Wed May 21 17:27:46 2014 xsyann
+** Last update Thu May 22 21:39:29 2014 xsyann
 */
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/list.h>
 
-#include "netmalloc.h"
+#include "kutils.h"
 #include "storage.h"
 
 static struct kernel_buffer_list *kernel_buffer_list = NULL;
 
 /* ************************************************************ */
 
-int network_save(unsigned long address, void *buffer)
+int network_save(pid_t pid, unsigned long address, void *buffer)
 {
         return 0;
 }
 
-int network_load(unsigned long address, void *buffer)
+int network_load(pid_t pid, unsigned long address, void *buffer)
 {
         return 0;
+}
+
+void network_remove(pid_t pid, unsigned long address)
+{
 }
 
 void network_release(void)
@@ -77,7 +81,8 @@ int kernel_save(pid_t pid, unsigned long address, void *buffer)
         if (kb == NULL)
                 return -ENOMEM;
 
-        PR_DEBUG("Save buffer at %016lx %p, pid = %d", address, buffer, pid);
+        PR_DEBUG(D_MED, "Save buffer at %016lx %p, pid = %d",
+                 address, buffer, pid);
 
         /* If buffer doesn't exist, create it and copy */
         if (kb->buffer == NULL) {
@@ -98,12 +103,28 @@ int kernel_load(pid_t pid, unsigned long address, void *buffer)
                 kb = get_kernel_buffer(pid, address, 0);
                 if (kb && kb->buffer) {
                         memcpy(buffer, kb->buffer, PAGE_SIZE);
-                        PR_DEBUG("Load buffer at %016lx %p, pid = %d",
+                        PR_DEBUG(D_MED, "Load buffer at %016lx %p, pid = %d",
                                  address, buffer, pid);
                 } else
                         memset(buffer, 0, PAGE_SIZE);
         }
         return 0;
+}
+
+void kernel_remove(pid_t pid, unsigned long address)
+{
+        struct kernel_buffer_list *kb, *tmp;
+        if (kernel_buffer_list) {
+                list_for_each_entry_safe(kb, tmp,
+                                         &kernel_buffer_list->list, list) {
+                        if (kb->address == address && kb->pid == pid) {
+                                if (kb->buffer)
+                                        kfree(kb->buffer);
+                                list_del(&kb->list);
+                                kfree(kb);
+                        }
+                }
+        }
 }
 
 void kernel_release(void)
