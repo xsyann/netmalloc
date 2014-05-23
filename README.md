@@ -23,7 +23,9 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
 `netfree` is inserted at offset `__NR_security` (_security_ is Not Implemented)
 
+---------------------------------------
 ###Memory
+
 
 ![](http://www.xsyann.com/epitech/vma_small.png)
 
@@ -46,6 +48,7 @@ Structures used to represent **areas** and **regions** (pseudocode) :
     
 An **area** is always linked to a **VMA** and are the same size.
 
+---------------------------------------
 ###Algorithm
 
 ![](http://www.xsyann.com/epitech/vma.gif?raw=1)
@@ -97,7 +100,7 @@ An **area** is always linked to a **VMA** and are the same size.
 
 When an **area**/**VMA** is created/extended, the size is always a multiple of `PAGE_SIZE`.
 
-##### Fault Handler
+#####Fault Handler
 
 When the fault handler is called, the page corresponding to virtual address is filled (from storage) and mapped in the user address space.
 One page at a time is mapped in user address space for each process / threads.
@@ -106,6 +109,7 @@ A static list keeps track of mapped buffers for each pid.
 
 When the fault handler is called and a page is already mapped in the user memory of this process, the old page is unmapped, stored (to storage) and, then, the requested page is mapped.
 
+---------------------------------------
 ###Generic_malloc
 
 Generic_malloc provide an interface to abstract the storage mode.
@@ -139,11 +143,12 @@ Implementation :
     generic_free(ptr);
     generic_malloc_clean();
 
+---------------------------------------
 ###Multi-thread handling
 
 **Lock before each operations**
 
-Kernel Module :
+    // Kernel Module
 
     __alloc()
     {
@@ -171,7 +176,7 @@ Kernel Module :
 	    mutex_unlock(mutex);
     }
 
-Linux :
+    // Linux
 
     do_page_fault()
     {
@@ -198,8 +203,8 @@ Linux :
 
 **Highest Lock**
 
-Kernel Module :
-
+    // Kernel Module
+   	
     __alloc()
     {
         [not_safe_operations]
@@ -222,7 +227,7 @@ Kernel Module :
 	    mutex_unlock(mutex);
     }
 
-Linux :
+    // Linux
 
     do_page_fault()
     {
