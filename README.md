@@ -5,7 +5,7 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
 ###Install
 
-    git clone https://github.com/4ppolo/netmalloc.git
+    git clone https://github.com/xsyann/netmalloc.git
     make
     make load
 
