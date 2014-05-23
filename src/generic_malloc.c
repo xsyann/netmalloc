@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Thu May 22 21:44:14 2014 xsyann
+** Last update Fri May 23 08:55:29 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -24,6 +24,7 @@
 /* ************************************************************ */
 
 static struct mapped_buffer buffers;
+static struct stored_page stored_pages;
 static struct area_struct area_list;
 
 static struct storage_ops *storage_ops;
@@ -60,6 +61,7 @@ static int is_valid_address(unsigned long address, struct vm_area_struct *vma)
         list_for_each_entry(area, &area_list.list, list) {
                 if (area->vma == vma)
                         list_for_each_entry(region, &area->regions.list, list) {
+
                                 start = (unsigned long)region->virtual_start;
                                 end = start + region->size;
                                 if (address >= start && address < end &&
@@ -68,6 +70,107 @@ static int is_valid_address(unsigned long address, struct vm_area_struct *vma)
                         }
         }
         return 0;
+}
+
+/* Add a stored_page */
+static struct stored_page *add_stored_page(pid_t pid, unsigned long start)
+{
+        struct stored_page *page;
+
+        page = kmalloc(sizeof(*page), GFP_KERNEL);
+        if (page == NULL)
+                return NULL;
+        page->pid = pid;
+        page->start = start;
+        INIT_LIST_HEAD(&page->list);
+        list_add_tail(&page->list, &stored_pages.list);
+        return page;
+}
+
+/* Return 1 if a page is stored for pid, start */
+static int is_stored_page(pid_t pid, unsigned long start)
+{
+        struct stored_page *page;
+
+        list_for_each_entry(page, &stored_pages.list, list)
+                if (page->pid == pid && page->start == start)
+                        return 1;
+        return 0;
+}
+
+/* Free stored page for pid, start */
+static void remove_stored_page(pid_t pid, unsigned long start)
+{
+        struct stored_page *page;
+
+        list_for_each_entry(page, &stored_pages.list, list) {
+                if (page->pid == pid && page->start == start) {
+                        list_del(&page->list);
+                        kfree(page);
+                        break;
+                }
+        }
+}
+
+/* Free stored pages list */
+static void remove_stored_pages(void)
+{
+        struct stored_page *page, *tmp;
+
+        list_for_each_entry_safe(page, tmp, &stored_pages.list, list) {
+                list_del(&page->list);
+                kfree(page);
+        }
+}
+
+
+/* Remove all pages in storage for region at address */
+void remove_storage_pages(pid_t pid, unsigned long address)
+{
+        struct area_struct *area;
+        struct region_struct *region;
+        unsigned long start, end;
+
+        area = get_area(pid, address, &area_list);
+        if (area) {
+                region = get_region(area, address);
+                if (region) {
+                        start = (unsigned long)region->virtual_start;
+                        end = (unsigned long)region->virtual_start + region->size;
+                        /* Page align */
+                        start -= start % PAGE_SIZE;
+                        end = end + PAGE_SIZE - (end % PAGE_SIZE);
+                        for (; start < end; start += PAGE_SIZE)
+                                if (is_stored_page(pid, start)) {
+                                        PR_DEBUG(D_MED, "Remove data at %016lx, pid = %d",
+                                                 start, pid);
+                                        storage_ops->remove(pid, start);
+                                        remove_stored_page(pid, start);
+                                }
+                }
+        }
+}
+
+/* Free area regions from storage and remove from list */
+static void free_vma(struct vm_area_struct *vma)
+{
+        struct area_struct *area;
+        struct region_struct *region, *tmp_region;
+
+        list_for_each_entry(area, &area_list.list, list) {
+                if (area->vma == vma) {
+                        list_for_each_entry_safe(region, tmp_region,
+                                                 &area->regions.list, list) {
+                                remove_storage_pages(area->pid,
+                                                     (unsigned long)region->virtual_start);
+                                list_del(&region->list);
+                                kfree(region);
+                        }
+                        list_del(&area->list);
+                        kfree(area);
+                        break;
+                }
+        }
 }
 
 /* Copy userspace page to kernel and save data. */
@@ -85,7 +188,8 @@ static int copy_page_from_user(pid_t pid, unsigned long start,
                 if (buffer == NULL)
                         return -ENOMEM;
                 storage_ops->save(pid, start, buffer);
-
+                if (add_stored_page(pid, start) == NULL)
+                        return -ENOMEM;
                 kunmap(page);
                 put_page(page);
         }
@@ -183,10 +287,13 @@ static struct page *map_page(pid_t pid, unsigned long address,
         get_page(page);
 
         /* Load data from storage */
-        storage_ops->load(pid, address, buffer->buffer);
-
-        PR_DEBUG(D_MED, "Load data at %016lx (page %ld) pid = %d",
-                 address, (address - vma->vm_start) >> PAGE_SHIFT, pid);
+        if (is_stored_page(pid, address)) {
+                storage_ops->load(pid, address, buffer->buffer);
+                PR_DEBUG(D_MED, "Load data at %016lx (page %ld) pid = %d",
+                         address, (address - vma->vm_start) >> PAGE_SHIFT, pid);
+        }
+        else
+                memset(buffer->buffer, 0, PAGE_SIZE);
         if (vm_insert_page(vma, address, page))
                 return NULL;
         buffer->vma = vma;
@@ -226,13 +333,15 @@ static void generic_malloc_vm_close(struct vm_area_struct *vma)
 
         PR_DEBUG(D_MIN, "Close call pid = %d, vma = %p", current->pid, vma);
         PR_DEBUG(D_MIN, "Close exec pid = %d, vma = %p", current->pid, vma);
-        remove_vma_from_area_list(&area_list, vma);
 
         /* To avoid unmapping in closed vma */
         list_for_each_entry(buffer, &buffers.list, list) {
                 if (buffer->vma == vma)
                         buffer->vma = NULL;
         }
+
+        free_vma(vma);
+
         PR_DEBUG(D_MIN, "Close end pid = %d, vma = %p\n", current->pid, vma);
 }
 
@@ -283,15 +392,18 @@ static struct vm_operations_struct vm_ops = {
 
 void generic_free(void *ptr)
 {
+        pid_t pid;
+
         PR_DEBUG(D_MIN, "Free call at %p, pid = %d", ptr, current->pid);
 
         down_write(&current->mm->mmap_sem);
         down_interruptible(&sem);
         PR_DEBUG(D_MIN, "Free exec %p, pid = %d", ptr, current->pid);
 
-        unmap_page(current->pid);
-        remove_region(current->pid, (unsigned long)ptr, &area_list);
-        storage_ops->remove(current->pid, (unsigned long)ptr);
+        pid = current->pid;
+        unmap_page(pid);
+        remove_storage_pages(pid, (unsigned long)ptr);
+        remove_region(pid, (unsigned long)ptr, &area_list);
 
         dump_area_list(); /* Debug */
 
@@ -340,12 +452,15 @@ void generic_malloc_init(struct storage_ops *s_ops)
         storage_ops = s_ops;
         init_area_list(&area_list);
         INIT_LIST_HEAD(&buffers.list);
+        INIT_LIST_HEAD(&stored_pages.list);
         sema_init(&sem, 1);
 }
 
 void generic_malloc_clean(void)
 {
+        dump_area_list();
         remove_buffers();
+        remove_stored_pages();
         remove_area_list(&area_list);
         storage_ops->release();
 }

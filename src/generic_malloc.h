@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:19:46 2014 xsyann
-** Last update Thu May 22 21:05:50 2014 xsyann
+** Last update Fri May 23 07:47:39 2014 xsyann
 */
 
 #ifndef         __GENERIC_MALLOC_H__
@@ -13,6 +13,13 @@
 
 #include <linux/mm.h>
 #include "storage.h"
+
+struct stored_page
+{
+        pid_t pid;
+        unsigned long start;
+        struct list_head list;
+};
 
 struct mapped_buffer
 {

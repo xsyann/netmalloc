@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Thu May 22 20:18:43 2014 xsyann
+** Last update Fri May 23 09:17:42 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -70,9 +70,61 @@ void *thread2_main(void *param)
         return NULL;
 }
 
+void *thread_main(void *param)
+{
+        (void)param;
+
+        char *buf = netmalloc(10000);
+        buf[100] = 5;
+        buf[5000] = 10;
+        buf[9000] = 11;
+//        netfree(buf);
+        return NULL;
+}
+
 int main(void)
 {
 
+        char *buf = netmalloc(500);
+        sprintf(buf, "toto");
+        printf("%s %c\n", buf, buf[1]);
+
+        char *buf1 = netmalloc(500);
+        sprintf(buf1, "titi");
+        printf("%s %c\n", buf1, buf1[1]);
+        printf("%s %s\n", buf, buf1);
+        char *buf2 = netmalloc(8200);
+        sprintf(buf2, "tata");
+        printf("%s\n", buf2);
+
+        netfree(buf1);
+
+        buf1 = netmalloc(430);
+        netfree(buf1);
+
+        netfree(buf2);
+
+//*
+        pthread_t thread11, thread12, thread13, thread14;
+
+        if (pthread_create(&thread11, NULL, thread_main, NULL))
+                return 1;
+        if (pthread_create(&thread12, NULL, thread_main, NULL))
+                return 1;
+        if (pthread_create(&thread13, NULL, thread_main, NULL))
+                return 1;
+        if (pthread_create(&thread14, NULL, thread_main, NULL))
+                return 1;
+        if (pthread_join(thread11, NULL))
+                return 2;
+        if (pthread_join(thread12, NULL))
+                return 2;
+        if (pthread_join(thread13, NULL))
+                return 2;
+        if (pthread_join(thread14, NULL))
+                return 2;
+//*/
+/*
         pthread_t thread1, thread2, thread3, thread4;
 
         if (pthread_create(&thread1, NULL, thread1_main, NULL))
@@ -156,7 +208,7 @@ int main(void)
         *ptr = 25;
         printf("%d\n", *ptr);
 //        netfree(ptr);
-
+//*/
 
         return 0;
 }

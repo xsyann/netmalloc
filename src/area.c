@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Thu May 22 21:36:32 2014 xsyann
+** Last update Fri May 23 09:15:04 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -17,32 +17,6 @@
 #include "generic_malloc.h"
 #include "netmalloc.h"
 #include "area.h"
-
-/* Return region at address in area. */
-static struct region_struct *get_region(struct area_struct *area,
-                                        unsigned long address)
-{
-        struct region_struct *region;
-
-        list_for_each_entry(region, &area->regions.list, list)
-                if ((unsigned long)region->virtual_start == address)
-                        return region;
-        return NULL;
-}
-
-/* Return area containing address for pid */
-static struct area_struct *get_area(pid_t pid, unsigned long address,
-                             struct area_struct *area_list)
-{
-        struct area_struct *area;
-
-        list_for_each_entry(area, &area_list->list, list)
-                if (area->pid == pid)
-                        if (address >= area->vma->vm_start &&
-                            address < area->vma->vm_end)
-                                return area;
-        return NULL;
-}
 
 /* Create new area and insert it in area_list. */
 static struct area_struct *add_area_struct(unsigned long size, pid_t pid,
@@ -143,6 +117,7 @@ static struct region_struct *get_free_region(struct area_struct *area,
                                 return NULL;
                         split->free = 1;
                         area->free_space += split->size;
+                        merge_neighbors_region(split, &area->regions);
                         return region;
                 }
         }
@@ -179,9 +154,10 @@ static int extend_vma(struct area_struct *area, unsigned long size)
 {
         unsigned long extra;
 
-        if (is_last_vma(area->vma))
+        extra = align_size(area->size + size - area->free_space, PAGE_SIZE) - area->size;
+        if (is_last_vma(area->vma) ||
+            area->vma->vm_next->vm_start > area->vma->vm_end + extra)
         {
-                extra = align_size(area->size + size, PAGE_SIZE) - area->size;
                 area->vma->vm_end += extra;
                 area->size += extra;
                 area->free_space += extra;
@@ -257,28 +233,35 @@ void remove_region(pid_t pid, unsigned long address,
         }
 }
 
+/* Return region at address in area. */
+struct region_struct *get_region(struct area_struct *area,
+                                        unsigned long address)
+{
+        struct region_struct *region;
+
+        list_for_each_entry(region, &area->regions.list, list)
+                if ((unsigned long)region->virtual_start == address)
+                        return region;
+        return NULL;
+}
+
+/* Return area containing address for pid */
+struct area_struct *get_area(pid_t pid, unsigned long address,
+                             struct area_struct *area_list)
+{
+        struct area_struct *area;
+
+        list_for_each_entry(area, &area_list->list, list)
+                if (area->pid == pid)
+                        if (address >= area->vma->vm_start &&
+                            address < area->vma->vm_end)
+                                return area;
+        return NULL;
+}
+
 void init_area_list(struct area_struct *area_list)
 {
         INIT_LIST_HEAD(&area_list->list);
-}
-
-void remove_vma_from_area_list(struct area_struct *area_list,
-                               struct vm_area_struct *vma)
-{
-        struct area_struct *area, *tmp_area;
-        struct region_struct *region, *tmp_region;
-
-        list_for_each_entry_safe(area, tmp_area, &area_list->list, list) {
-                if (area->vma == vma) {
-                        list_for_each_entry_safe(region, tmp_region,
-                                                 &area->regions.list, list) {
-                                list_del(&region->list);
-                                kfree(region);
-                        }
-                        list_del(&area->list);
-                        kfree(area);
-                }
-        }
 }
 
 void remove_area_list(struct area_struct *area_list)

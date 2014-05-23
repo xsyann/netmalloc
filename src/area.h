@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:26:59 2014 xsyann
-** Last update Thu May 22 14:47:20 2014 xsyann
+** Last update Fri May 23 06:41:49 2014 xsyann
 */
 
 #ifndef         __AREA_H__
@@ -31,16 +31,17 @@ struct area_struct
         struct list_head list;
 };
 
-
 void init_area_list(struct area_struct *area_list);
 void remove_area_list(struct area_struct *area_list);
-void remove_vma_from_area_list(struct area_struct *area_list,
-                               struct vm_area_struct *vma);
 struct region_struct *create_region(unsigned long size,
                                     struct task_struct *task,
                                     struct area_struct *area_list,
                                     struct vm_operations_struct *vm_ops);
 void remove_region(pid_t pid, unsigned long address,
                    struct area_struct *area_list);
+struct region_struct *get_region(struct area_struct *area,
+                                 unsigned long address);
+struct area_struct *get_area(pid_t pid, unsigned long address,
+                             struct area_struct *area_list);
 
 #endif          /* __AREA_H__ */
