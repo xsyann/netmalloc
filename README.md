@@ -48,7 +48,7 @@ An **area** is always linked to a **VMA** and are the same size.
 
 ###Algorithm
 
-![](http://www.xsyann.com/epitech/vma.gif)
+![](http://www.xsyann.com/epitech/vma.gif?raw=1)
 
 `generic_malloc(size)` (pseudocode) :
 
