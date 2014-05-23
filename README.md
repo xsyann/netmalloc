@@ -18,7 +18,7 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
     void *netmalloc(unsigned long size);
     void netfree(void *ptr);
-    
+
 `netmalloc` is inserted at offset `__NR_tuxcall` (_tuxcall_ is Not Implemented)
 
 `netfree` is inserted at offset `__NR_security` (_security_ is Not Implemented)
@@ -33,19 +33,19 @@ Structures used to represent **areas** and **regions** (pseudocode) :
 
     struct area_struct
     {
-    	struct vm_area_struct *vma;
-	    ulong size;
-	    ulong free_space;
-	    region_struct regions[];
+        struct vm_area_struct *vma;
+        ulong size;
+        ulong free_space;
+        region_struct regions[];
     };
 
     struct region_struct
     {
-	    bool free;
-	    ulong size;
-	    ulong start;
+        bool free;
+        ulong size;
+        ulong start;
     };
-    
+
 An **area** is always linked to a **VMA** and are the same size.
 
 ---------------------------------------
@@ -74,27 +74,27 @@ An **area** is always linked to a **VMA** and are the same size.
             area = Create new area
             area.vma = add_vma(size, pid)
     }
-    
+
     add_region(area, size)
     {
         if (region = get_free_region(size))
-	        return region
+            return region
         else
             add a new region after the last existing region in area
     }
-    
+
     add_vma(size, pid)
     {
-	    scan vmas of 'pid' process to find the first free space at least 'size' big,
-	    (start with an offset to avoid inserting vma at virtual address 0x0000)
+        scan vmas of 'pid' process to find the first free space at least 'size' big,
+        (start with an offset to avoid inserting vma at virtual address 0x0000)
     }
 
     get_free_region(size)
     {
-	    if a free region.size == size, return the free region.
-	    if a free region.size > size
-	        split the region to get a region.size == size and a free region
-		    merge the splitted free region with neighbors
+        if a free region.size == size, return the free region
+        if a free region.size > size
+            split the region to get a region.size == size and a free region
+            merge the splitted free region with neighbors
     }
 
 
@@ -121,21 +121,21 @@ Generic_malloc provide an interface to abstract the storage mode.
 
     struct storage_ops
     {
-	    int (*init)(void *param);
-	    int (*save)(pid_t pid, unsigned long address, void *buffer);
-	    int (*load)(pid_t pid, unsigned long address, void *buffer);
-	    int (*remove)(pid_t pid, unsigned long address);
-	    int (*release)(void);
+        int (*init)(void *param);
+        int (*save)(pid_t pid, unsigned long address, void *buffer);
+        int (*load)(pid_t pid, unsigned long address, void *buffer);
+        int (*remove)(pid_t pid, unsigned long address);
+        int (*release)(void);
     };
-    
+
 Implementation :
 
     static struct storage_ops storage_ops = {
-	    .init = network_init,
-	    .save = network_save,	
-	    .load = network_load,
-	    .remove = network_remove,
-	    .release = network_release
+        .init = network_init,
+        .save = network_save,
+        .load = network_load,
+        .remove = network_remove,
+        .release = network_release
     };
 
     generic_malloc_init(&storage_ops, "192.168.0.3:12345");
@@ -152,50 +152,50 @@ Implementation :
 
     __alloc()
     {
-	    down_write(mmap_sem);
-	    [not_safe_operations]
-	    up_write(mmap_sem);
-	
-    	[safe_operations]
-	
-	    down_write(mmap_sem);
-	    [not_safe_operations]
-	    up_write(mmap_sem);
+        down_write(mmap_sem);
+        [not_safe_operations]
+        up_write(mmap_sem);
+
+        [safe_operations]
+
+        down_write(mmap_sem);
+        [not_safe_operations]
+        up_write(mmap_sem);
     }
 
     alloc()
     {
-	    mutex_lock(mutex);
-	    __alloc();
-	    mutex_unlock(mutex);
+        mutex_lock(mutex);
+        __alloc();
+        mutex_unlock(mutex);
     }
 
     fault_handler()
     {
-	    mutex_lock(mutex);
-	    mutex_unlock(mutex);
+        mutex_lock(mutex);
+        mutex_unlock(mutex);
     }
 
     // Linux
 
     do_page_fault()
     {
-	    down_read(mmap_sem);
-	    fault_handler();
-	    up_read(mmap_sem);
+        down_read(mmap_sem);
+        fault_handler();
+        up_read(mmap_sem);
     }
-    
+
 **Mutli-thread scenario**
 
     1. alloc();
-    2.      mutex_lock(mutex); (alloc)
-    
-    3. do_page_fault();
-    4.      down_read(mmap_sem); (do_page_fault)
-    5.      [ fault_handler(); (do_page_fault)
-	6.          mutex_lock(mutex); (fault_handler) ] -> BLOCK
+    2.     mutex_lock(mutex); (alloc)
 
-	7.      __alloc(); (alloc)
+    3. do_page_fault();
+    4.     down_read(mmap_sem); (do_page_fault)
+    5.     [ fault_handler(); (do_page_fault)
+    6.         mutex_lock(mutex); (fault_handler) ] -> BLOCK
+
+    7.      __alloc(); (alloc)
     8.          down_write(mmap_sem); (__alloc) -> BLOCK
     = DEADLOCK
 
@@ -204,56 +204,56 @@ Implementation :
 **Highest Lock**
 
     // Kernel Module
-   	
+
     __alloc()
     {
         [not_safe_operations]
-	    [operations]
-	    [not_safe_operations]
+        [operations]
+        [not_safe_operations]
     }
 
     alloc()
     {
-	    down_write(mmap_sem);
-	    mutex_lock(mutex);
-	    __alloc();
-	    mutex_unlock(mutex);
-	    up_write(mmap_sem);
+        down_write(mmap_sem);
+        mutex_lock(mutex);
+        __alloc();
+        mutex_unlock(mutex);
+        up_write(mmap_sem);
     }
 
     fault_handler()
     {
-	    mutex_lock(mutex);
-	    mutex_unlock(mutex);
+        mutex_lock(mutex);
+        mutex_unlock(mutex);
     }
 
     // Linux
 
     do_page_fault()
     {
-	    down_read(mmap_sem);
-	    fault_handler();
-	    up_read(mmap_sem);
+        down_read(mmap_sem);
+        fault_handler();
+        up_read(mmap_sem);
     }
 
 **Mutli-thread scenario**
 
     1. alloc();
-    2.      down_write(mmap_sem); (alloc)
-    3.      mutex_lock(mutex); (alloc)
-    
+    2.     down_write(mmap_sem); (alloc)
+    3.     mutex_lock(mutex); (alloc)
+
     4. do_page_fault();
-    5.      down_read(mmap_sem); (do_page_fault) -> BLOCK
-    
-    6.      __alloc(); (alloc)
-    7.          [not_safe_operations] (__alloc)
-    8.          [safe_operations] (__alloc)
-    9.          [not_safe_operations] (__alloc)
+    5.     down_read(mmap_sem); (do_page_fault) -> BLOCK
+
+    6.     __alloc(); (alloc)
+    7.         [not_safe_operations] (__alloc)
+    8.         [safe_operations] (__alloc)
+    9.         [not_safe_operations] (__alloc)
     10.     mutex_unlock(mutex); (alloc)
     11.     up_write(mmap_sem); (alloc)
-    
-    12.    fault_handler(); (do_page_fault)
-    13.    up_read(mmap_sem); (do_page_fault)
+
+    12.     fault_handler(); (do_page_fault)
+    13.     up_read(mmap_sem); (do_page_fault)
     = GOOD
-    
+
 The vm operations close handler can't be locked because it is called by do_munmap (when a VMA is removed) in the generic_free function which is locked.
