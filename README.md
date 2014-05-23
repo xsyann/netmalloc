@@ -69,7 +69,7 @@ An **area** is always linked to a **VMA** and are the same size.
     get_area(size, pid)
     {
         if an area with pid is big enough, return area
-        else if an area with pid exist but too short, extend the area if area.vma is the last vma
+        else if an area with pid exist but too short, extend the area if possible
         else
             area = Create new area
             area.vma = add_vma(size, pid)
