@@ -146,6 +146,10 @@ Implementation :
 ---------------------------------------
 ###Multi-thread handling
 
+In a multi-threaded context, we must be careful because the linux kernel calls the fault handler under a mmap_sem read lock. It means that we can down_read, but not down_write in the fault handler.
+
+If generic_alloc is called and, then, a fault occurs in another thread (before generic_alloc execution), the mmap_sem is down_read (by linux kernel) ; during the generic_alloc execution, the down_write(mmap_sem) (before insert_vm_struct) will block, causing a deadlock.
+
 **Lock before each operations**
 
     // Kernel Module
@@ -185,7 +189,7 @@ Implementation :
         up_read(mmap_sem);
     }
 
-**Mutli-thread scenario**
+**Multi-thread scenario**
 
     1. alloc();
     2.     mutex_lock(mutex); (alloc)
@@ -236,7 +240,7 @@ Implementation :
         up_read(mmap_sem);
     }
 
-**Mutli-thread scenario**
+**Multi-thread scenario**
 
     1. alloc();
     2.     down_write(mmap_sem); (alloc)
