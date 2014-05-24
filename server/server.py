@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Sat May 24 21:53:59 2014 xsyann
+## Last update Sat May 24 22:23:18 2014 xsyann
 ##
 
 """
@@ -79,7 +79,7 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-class FileTriggerServer:
+class NetMallocServer:
     def __init__(self, host, port):
         self.server = ThreadedTCPServer((host, port), ThreadedTCPRequestHandler)
         self.ip, self.port = self.server.server_address
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     default = {'l': "localhost", 'p': 12345 }
 
-    parser = argparse.ArgumentParser(description="File Trigger server.")
+    parser = argparse.ArgumentParser(description="Net Malloc server.")
     parser.add_argument("-l", "--location", type=str,
                         help="Host", default=default['l'])
     parser.add_argument("-p", "--port", type=int,
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     print __doc__
 
-    fts = FileTriggerServer(args.location, args.port)
-    fts.run()
+    nms = NetMallocServer(args.location, args.port)
+    nms.run()
 
 
