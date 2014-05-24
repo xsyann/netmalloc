@@ -5,22 +5,80 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 18:57:54 2014 xsyann
-** Last update Sat May 24 19:02:16 2014 xsyann
+** Last update Sat May 24 21:29:50 2014 xsyann
 */
 
 #include <linux/socket.h>
 #include <linux/net.h>
 #include <linux/in.h>
+#include <linux/unistd.h>
+#include <asm/uaccess.h>
 
+#include "kutils.h"
 #include "socket.h"
 
-unsigned int inet_addr(const char *str)
+static unsigned int inet_addr(const char *str)
 {
         int a, b, c, d;
         char arr[4];
         sscanf(str, "%d.%d.%d.%d", &a, &b, &c, &d);
         arr[0] = a; arr[1] = b; arr[2] = c; arr[3] = d;
         return *(unsigned int *)arr;
+}
+
+static void socket_prepare(struct msghdr *msg, struct iovec *iov,
+                            void *buf, size_t len)
+{
+        msg->msg_control = NULL;
+        msg->msg_controllen = 0;
+        msg->msg_flags = 0;
+        msg->msg_name = 0;
+        msg->msg_namelen = 0;
+        msg->msg_iov = iov;
+        msg->msg_iovlen = 1;
+
+        iov->iov_base = buf;
+        iov->iov_len = len;
+}
+
+int socket_send(struct socket *socket, void *buf, size_t len)
+{
+        struct msghdr msg;
+        struct iovec iov;
+        mm_segment_t oldfs;
+        int size = 0;
+
+        if (socket == NULL)
+                return -1;
+
+        socket_prepare(&msg, &iov, buf, len);
+
+        oldfs = get_fs();
+        set_fs(KERNEL_DS);
+        size = sock_sendmsg(socket, &msg, len);
+        set_fs(oldfs);
+
+        return size;
+}
+
+int socket_recv(struct socket *socket, void *buf, size_t len)
+{
+        struct msghdr msg;
+        struct iovec iov;
+        mm_segment_t oldfs;
+        int size = 0;
+
+        if (socket == NULL)
+                return -1;
+
+        socket_prepare(&msg, &iov, buf, len);
+
+        oldfs = get_fs();
+        set_fs(KERNEL_DS);
+        size = sock_recvmsg(socket, &msg, len, msg.msg_flags);
+        set_fs(oldfs);
+
+        return size;
 }
 
 int socket_init(struct socket **socket, const char *host, int port)
@@ -46,5 +104,6 @@ int socket_init(struct socket **socket, const char *host, int port)
 
 void socket_release(struct socket *socket)
 {
-        socket->ops->release(socket);
+        if (socket != NULL)
+                socket->ops->release(socket);
 }

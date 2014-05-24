@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Sat May 24 04:29:46 2014 xsyann
+** Last update Sat May 24 22:13:58 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -256,15 +256,18 @@ int is_valid_address(unsigned long address, struct vm_area_struct *vma,
         unsigned long start, end;
 
         list_for_each_entry(area, &area_list->list, list) {
-                if (area->vma == vma)
+                if (area->vma == vma) {
                         list_for_each_entry(region, &area->regions.list, list) {
-
                                 start = (unsigned long)region->virtual_start;
                                 end = start + region->size;
+                                /* Page align */
+                                start = align_floor(start, PAGE_SHIFT);
+                                end = align_ceil(end, PAGE_SHIFT);
                                 if (address >= start && address < end &&
                                     region->free == 0)
                                         return 1;
                         }
+                }
         }
         return 0;
 }

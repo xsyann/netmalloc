@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Sat May 24 04:35:13 2014 xsyann
+** Last update Sat May 24 22:13:06 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -90,6 +90,7 @@ int main(void)
         char *buf = netmalloc(500);
         sprintf(buf, "toto");
         printf("toto o : %s %c\n", buf, buf[1]);
+//        buf[4097] = 'a'; // Bus error
 
         char *buf1 = netmalloc(500);
         sprintf(buf1, "titi");
@@ -109,7 +110,13 @@ int main(void)
 
         netfree(buf2);
 
-/*
+        char *buf3 = netmalloc(22200);
+        buf3[0] = 'a';
+        buf3[4097] = 'b';
+        buf3[4096 * 2] = 'c';
+        buf3[4096 * 3] = 'd';
+
+//*
         pthread_t thread11, thread12, thread13, thread14;
 
         if (pthread_create(&thread11, NULL, thread_main, NULL))
@@ -129,7 +136,7 @@ int main(void)
         if (pthread_join(thread14, NULL))
                 return 2;
 //*/
-/*
+//*
         pthread_t thread1, thread2, thread3, thread4;
 
         if (pthread_create(&thread1, NULL, thread1_main, NULL))

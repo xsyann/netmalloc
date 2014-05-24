@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Sat May 24 03:18:07 2014 xsyann
+## Last update Sat May 24 21:53:59 2014 xsyann
 ##
 
 """
@@ -18,16 +18,61 @@ Authors: Nicolas de Thore, Yann Koeth
 import socket
 import threading
 import SocketServer
+import time
+import ctypes
+from ctypes import *
+
+pages = {}
+
+class Protocol(Structure):
+
+    PAGE_SHIFT = 12
+    PAGE_SIZE = 1 << PAGE_SHIFT
+
+    PUT = 1
+    GET = 2
+
+    _fields_ = [("command", c_int),
+                ("pid", c_int),
+                ("address", c_ulong)]
+
+    def pack(self, buf):
+        fit = min(len(buf), ctypes.sizeof(self))
+        ctypes.memmove(ctypes.addressof(self), buf, fit)
+
 
 class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
 
     def handle(self):
         currentThread = threading.current_thread()
         print "New Client", currentThread.name
-        data = self.rfile.readline().rstrip('\r\n')
-        print "{} ({})".format(data, currentThread.name)
-        response = "{}: {}".format(currentThread.name, data)
-        self.wfile.write("{}\r\n".format(response))
+
+        while True:
+            p = Protocol()
+            data = self.request.recv(ctypes.sizeof(p))
+            if not data:
+                break
+            p.pack(data)
+
+            if p.command == Protocol.PUT:
+                print "PUT pid = {}, address = {}".format(p.pid, hex(p.address))
+                data = self.request.recv(Protocol.PAGE_SIZE)
+                print "Received {} bytes".format(len(data))
+                if p.pid in pages:
+                    pages[p.pid][p.address] = data
+                else:
+                    pages[p.pid] = { p.address: data }
+
+            if p.command == Protocol.GET:
+                print "GET pid = {}, address = {}".format(p.pid, hex(p.address))
+                page = chr(0) * Protocol.PAGE_SIZE
+                if p.pid in pages:
+                    pid_pages = pages[p.pid]
+                    if p.address in pid_pages:
+                        page = pid_pages[p.address]
+                self.request.send(page)
+
+        print "Client quit", currentThread.name
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
@@ -49,8 +94,8 @@ class FileTriggerServer:
         print "Server loop running in thread:", serverThread.name
 
         try:
-            while (True):
-                pass
+            while True:
+                time.sleep(0.2)
         except KeyboardInterrupt:
             print "Bye."
             self.server.shutdown()

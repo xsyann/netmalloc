@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 11:11:01 2014 xsyann
-** Last update Sat May 24 19:00:59 2014 xsyann
+** Last update Sat May 24 21:53:28 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -14,6 +14,7 @@
 
 #include "kutils.h"
 #include "socket.h"
+#include "protocol.h"
 #include "storage.h"
 
 struct socket *socket = NULL;
@@ -46,7 +47,6 @@ int network_init(void *param)
         memset(host, 0, 16);
         if ((error = parse_address_param(param, host, 16, &port)))
                 return error;
-        PR_DEBUG(D_MED, "%s %ld", host, port);
         if ((error = socket_init(&socket, host, port)))
                 return error;
 
@@ -55,11 +55,33 @@ int network_init(void *param)
 
 int network_load(pid_t pid, unsigned long address, void *buffer)
 {
+        int size = 0;
+        struct protocol_header protocol_header = {
+                .command = PROTOCOL_GET,
+                .pid = pid,
+                .address = address,
+        };
+
+        size = socket_send(socket, &protocol_header, sizeof(protocol_header));
+        if (size == sizeof(protocol_header))
+                socket_recv(socket, buffer, PAGE_SIZE);
+
         return 0;
 }
 
 int network_save(pid_t pid, unsigned long address, void *buffer)
 {
+        int size = 0;
+        struct protocol_header protocol_header = {
+                .command = PROTOCOL_PUT,
+                .pid = pid,
+                .address = address,
+        };
+
+        size = socket_send(socket, &protocol_header, sizeof(protocol_header));
+        if (size == sizeof(protocol_header))
+                size = socket_send(socket, buffer, PAGE_SIZE);
+
         return 0;
 }
 
