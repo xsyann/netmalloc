@@ -124,8 +124,8 @@ Generic_malloc provide an interface to abstract the storage mode.
         int (*init)(void *param);
         int (*save)(pid_t pid, unsigned long address, void *buffer);
         int (*load)(pid_t pid, unsigned long address, void *buffer);
-        int (*remove)(pid_t pid, unsigned long address);
-        int (*release)(void);
+        void (*remove)(pid_t pid, unsigned long address);
+        void (*release)(void);
     };
 
 Implementation :
@@ -138,7 +138,7 @@ Implementation :
         .release = network_release
     };
 
-    generic_malloc_init(&storage_ops, "192.168.0.3:12345");
+    generic_malloc_init(&storage_ops, "192.168.0.3:12345")
     void *ptr = generic_malloc(4096);
     generic_free(ptr);
     generic_malloc_clean();
