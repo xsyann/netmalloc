@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Fri May 23 09:15:04 2014 xsyann
+** Last update Sat May 24 01:34:54 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -51,7 +51,7 @@ static struct region_struct *add_region_after(struct region_struct *prev,
         list_add(&region->list, &prev->list);
 
         /* Set virtual start */
-        if (&prev->list == &area->regions.list)
+        if (list_is_first(&region->list, &area->regions.list))
                 region->virtual_start = (void *)area->vma->vm_start;
         else
                 region->virtual_start = prev->virtual_start + prev->size;
@@ -61,8 +61,8 @@ static struct region_struct *add_region_after(struct region_struct *prev,
 /* Merge region with next or prev if they are free.
  * Remove region if last in vma.
 */
-void merge_neighbors_region(struct region_struct *region,
-                            struct region_struct *first)
+static void merge_neighbors_region(struct region_struct *region,
+                                   struct region_struct *first)
 {
         struct region_struct *next;
         struct region_struct *prev;
@@ -125,36 +125,30 @@ static struct region_struct *get_free_region(struct area_struct *area,
 }
 
 /* Use a free region if possible or create a new one at list end. */
-static struct region_struct *add_region_struct(struct area_struct *area,
+static struct region_struct *add_region(struct area_struct *area,
                                                unsigned long size)
 {
         struct region_struct *region;
+        struct region_struct *last_region;
 
         region = get_free_region(area, size);
         if (region)
                 return region;
-        region = add_region_after(list_entry(area->regions.list.prev,
-                                             struct region_struct, list),
-                                  area, size);
+
+        last_region = list_last_entry(&area->regions.list,
+                                      struct region_struct, list);
+        region = add_region_after(last_region, area, size);
+
         return region;
 }
 
-/* Align size (size >= alignment, size % alignment == 0). */
-static unsigned long align_size(unsigned long size, unsigned long alignment)
-{
-        size = size < alignment ? alignment : size;
-        if (size % alignment && size > alignment)
-                size = size + alignment - (size % alignment);
-        return size;
-}
-
-/* Extend vma if vma is last.
+/* Extend vma if possible.
  * Return 0 on success and negative on error. */
 static int extend_vma(struct area_struct *area, unsigned long size)
 {
         unsigned long extra;
 
-        extra = align_size(area->size + size - area->free_space, PAGE_SIZE) - area->size;
+        extra = align_ceil(area->size + size - area->free_space, PAGE_SHIFT) - area->size;
         if (is_last_vma(area->vma) ||
             area->vma->vm_next->vm_start > area->vma->vm_end + extra)
         {
@@ -167,7 +161,7 @@ static int extend_vma(struct area_struct *area, unsigned long size)
 }
 
 /* Return the first area_struct with 'size' space free or create one. */
-static struct area_struct *get_vma_container(unsigned long size,
+static struct area_struct *get_area_container(unsigned long size,
                                              struct task_struct *task,
                                              struct area_struct *area_list,
                                              struct vm_operations_struct *vm_ops)
@@ -183,7 +177,8 @@ static struct area_struct *get_vma_container(unsigned long size,
                 }
         }
         /* Create new vma */
-        size = align_size(size, VMA_SIZE);
+        size = align_ceil(size, VMA_SHIFT);
+        PR_DEBUG(D_MED, "SIZE ALIGNED = %ld", size);
 
         area = add_area_struct(size, task->pid, area_list);
 
@@ -203,11 +198,11 @@ struct region_struct *create_region(unsigned long size,
                                     struct vm_operations_struct *vm_ops)
 {
         struct region_struct *region;
-        struct area_struct *area = get_vma_container(size, task,
+        struct area_struct *area = get_area_container(size, task,
                                                      area_list, vm_ops);
         if (area == NULL)
                 return NULL;
-        region = add_region_struct(area, size);
+        region = add_region(area, size);
         return region;
 }
 
@@ -226,11 +221,53 @@ void remove_region(pid_t pid, unsigned long address,
                         /* Merge with neighbors */
                         merge_neighbors_region(region, &area->regions);
 
-                        /* Remove Area if empty */
-                        if (area->regions.list.next == area->regions.list.prev)
+                        /* Remove vma if empty */
+                        /* (area_struct will be deleted by close hander) */
+                        if (list_empty(&area->regions.list))
                                 remove_vma(area->vma);
                 }
         }
+}
+
+/* Print all areas and regions */
+void dump_area_list(struct area_struct *area_list)
+{
+        struct area_struct *area;
+        struct region_struct *region;
+
+        PR_DEBUG(D_MED, "");
+        PR_DEBUG(D_MED, "Area list :");
+        list_for_each_entry(area, &area_list->list, list) {
+                PR_DEBUG(D_MED, "- VMA : size = %ld, pid = %d, freespace = %ld",
+                        area->size, area->pid, area->free_space);
+                list_for_each_entry(region, &area->regions.list, list) {
+                        PR_DEBUG(D_MED, "   - Region, size = %ld, start = %p, free = %d",
+                                 region->size, region->virtual_start, region->free);
+                }
+        }
+              PR_DEBUG(D_MED, "");
+}
+
+/* Return 1 if address is a valid virtual address and 0 if not. */
+int is_valid_address(unsigned long address, struct vm_area_struct *vma,
+                     struct area_struct *area_list)
+{
+        struct area_struct *area;
+        struct region_struct *region;
+        unsigned long start, end;
+
+        list_for_each_entry(area, &area_list->list, list) {
+                if (area->vma == vma)
+                        list_for_each_entry(region, &area->regions.list, list) {
+
+                                start = (unsigned long)region->virtual_start;
+                                end = start + region->size;
+                                if (address >= start && address < end &&
+                                    region->free == 0)
+                                        return 1;
+                        }
+        }
+        return 0;
 }
 
 /* Return region at address in area. */
@@ -257,6 +294,18 @@ struct area_struct *get_area(pid_t pid, unsigned long address,
                             address < area->vma->vm_end)
                                 return area;
         return NULL;
+}
+
+/* Return area count for pid */
+int get_area_count(pid_t pid, struct area_struct *area_list)
+{
+        struct area_struct *area;
+        int count = 0;
+
+        list_for_each_entry(area, &area_list->list, list)
+                if (area->pid == pid)
+                        ++count;
+        return count;
 }
 
 void init_area_list(struct area_struct *area_list)

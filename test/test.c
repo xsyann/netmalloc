@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Fri May 23 09:17:42 2014 xsyann
+** Last update Sat May 24 01:57:44 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -85,17 +85,21 @@ void *thread_main(void *param)
 int main(void)
 {
 
+
+
         char *buf = netmalloc(500);
         sprintf(buf, "toto");
         printf("%s %c\n", buf, buf[1]);
+
+        netfree(buf);
 
         char *buf1 = netmalloc(500);
         sprintf(buf1, "titi");
         printf("%s %c\n", buf1, buf1[1]);
         printf("%s %s\n", buf, buf1);
         char *buf2 = netmalloc(8200);
-        sprintf(buf2, "tata");
-        printf("%s\n", buf2);
+        sprintf(buf2 + 8100, "tata");
+        printf("%s\n", buf2 + 8100);
 
         netfree(buf1);
 

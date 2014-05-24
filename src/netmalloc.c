@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:27 2014 xsyann
-** Last update Thu May 22 21:16:04 2014 xsyann
+** Last update Fri May 23 23:05:51 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -20,10 +20,10 @@
 #include "kutils.h"
 #include "netmalloc.h"
 
-MODULE_LICENSE("GPL");
 MODULE_AUTHOR(NETMALLOC_AUTHOR);
 MODULE_DESCRIPTION(NETMALLOC_DESC);
 MODULE_VERSION(NETMALLOC_VERSION);
+MODULE_LICENSE("GPL");
 
 /* ************************************************************ */
 

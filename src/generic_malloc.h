@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:19:46 2014 xsyann
-** Last update Fri May 23 07:47:39 2014 xsyann
+** Last update Sat May 24 01:46:51 2014 xsyann
 */
 
 #ifndef         __GENERIC_MALLOC_H__
@@ -14,26 +14,10 @@
 #include <linux/mm.h>
 #include "storage.h"
 
-struct stored_page
-{
-        pid_t pid;
-        unsigned long start;
-        struct list_head list;
-};
-
-struct mapped_buffer
-{
-        void *buffer;
-        struct vm_area_struct *vma;
-        unsigned long start;
-        pid_t pid;
-        struct list_head list;
-};
-
 typedef void zap_page_range_prot(struct vm_area_struct *, unsigned long,
                                  unsigned long, struct zap_details *);
 
-#define VMA_SIZE PAGE_SIZE * 2
+#define VMA_SHIFT (PAGE_SHIFT + 1)
 
 void generic_free(void *ptr);
 void *generic_malloc(unsigned long size);
