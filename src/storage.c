@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 11:11:01 2014 xsyann
-** Last update Fri May 23 08:04:59 2014 xsyann
+** Last update Sat May 24 19:00:59 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -13,18 +13,52 @@
 #include <linux/list.h>
 
 #include "kutils.h"
+#include "socket.h"
 #include "storage.h"
 
-static struct kernel_buffer_list *kernel_buffer_list = NULL;
+struct socket *socket = NULL;
 
-/* ************************************************************ */
-
-int network_save(pid_t pid, unsigned long address, void *buffer)
+int parse_address_param(const char *address, char *host, size_t size, long *port)
 {
+        char *dup, *save, *token;
+        int ret = -1;
+
+        dup = save = kstrdup(address, GFP_KERNEL);
+        if (dup == NULL)
+                return -ENOMEM;
+        token = strsep(&dup, ":");
+        if (token) {
+                strncpy(host, token, size - 1);
+                if (dup)
+                        ret = kstrtol(dup, 10, port);
+        }
+
+        kfree(save);
+        return ret;
+}
+
+int network_init(void *param)
+{
+        char host[16];
+        long port;
+        int error;
+
+        memset(host, 0, 16);
+        if ((error = parse_address_param(param, host, 16, &port)))
+                return error;
+        PR_DEBUG(D_MED, "%s %ld", host, port);
+        if ((error = socket_init(&socket, host, port)))
+                return error;
+
         return 0;
 }
 
 int network_load(pid_t pid, unsigned long address, void *buffer)
+{
+        return 0;
+}
+
+int network_save(pid_t pid, unsigned long address, void *buffer)
 {
         return 0;
 }
@@ -35,9 +69,12 @@ void network_remove(pid_t pid, unsigned long address)
 
 void network_release(void)
 {
+        socket_release(socket);
 }
 
 /* ************************************************************ */
+
+static struct kernel_buffer_list *kernel_buffer_list = NULL;
 
 static void dump_kernel_buffer_list(void)
 {
@@ -76,18 +113,19 @@ static struct kernel_buffer_list *get_kernel_buffer(pid_t pid, unsigned int addr
         return kb;
 }
 
+int kernel_init(void *param)
+{
+        kernel_buffer_list = kmalloc(sizeof(*kernel_buffer_list), GFP_KERNEL);
+        if (kernel_buffer_list == NULL)
+                return -ENOMEM;
+        INIT_LIST_HEAD(&kernel_buffer_list->list);
+
+        return 0;
+}
+
 int kernel_save(pid_t pid, unsigned long address, void *buffer)
 {
         struct kernel_buffer_list *kb;
-
-        /* If list doesn't exist, create one */
-        if (kernel_buffer_list == NULL) {
-                kernel_buffer_list =
-                        kmalloc(sizeof(*kernel_buffer_list), GFP_KERNEL);
-                INIT_LIST_HEAD(&kernel_buffer_list->list);
-        }
-        if (kernel_buffer_list == NULL)
-                return -ENOMEM;
 
         kb = get_kernel_buffer(pid, address, 1);
         kb->address = address;

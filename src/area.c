@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Sat May 24 01:34:54 2014 xsyann
+** Last update Sat May 24 04:29:46 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -178,7 +178,6 @@ static struct area_struct *get_area_container(unsigned long size,
         }
         /* Create new vma */
         size = align_ceil(size, VMA_SHIFT);
-        PR_DEBUG(D_MED, "SIZE ALIGNED = %ld", size);
 
         area = add_area_struct(size, task->pid, area_list);
 

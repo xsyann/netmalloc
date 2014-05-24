@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Sat May 24 01:57:44 2014 xsyann
+** Last update Sat May 24 04:35:13 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -89,17 +89,18 @@ int main(void)
 
         char *buf = netmalloc(500);
         sprintf(buf, "toto");
-        printf("%s %c\n", buf, buf[1]);
-
-        netfree(buf);
+        printf("toto o : %s %c\n", buf, buf[1]);
 
         char *buf1 = netmalloc(500);
         sprintf(buf1, "titi");
-        printf("%s %c\n", buf1, buf1[1]);
-        printf("%s %s\n", buf, buf1);
+        printf("titi i: %s %c\n", buf1, buf1[1]);
+        printf("toto titi: %s %s\n", buf, buf1);
+        netfree(buf);
         char *buf2 = netmalloc(8200);
         sprintf(buf2 + 8100, "tata");
-        printf("%s\n", buf2 + 8100);
+        printf("tata: %s\n", buf2 + 8100);
+
+        printf("titi i: %s %c\n", buf1, buf1[1]);
 
         netfree(buf1);
 
@@ -108,7 +109,7 @@ int main(void)
 
         netfree(buf2);
 
-//*
+/*
         pthread_t thread11, thread12, thread13, thread14;
 
         if (pthread_create(&thread11, NULL, thread_main, NULL))

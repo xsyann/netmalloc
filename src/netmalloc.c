@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:27 2014 xsyann
-** Last update Fri May 23 23:05:51 2014 xsyann
+** Last update Sat May 24 19:02:01 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -25,14 +25,21 @@ MODULE_DESCRIPTION(NETMALLOC_DESC);
 MODULE_VERSION(NETMALLOC_VERSION);
 MODULE_LICENSE("GPL");
 
+static char *server = "127.0.0.1:12345";
+
+module_param(server, charp, 0);
+MODULE_PARM_DESC(server, "host:port");
+
 /* ************************************************************ */
 
 static struct storage_ops storage_ops = {
-        .save = kernel_save,
-        .load = kernel_load,
-        .remove = kernel_remove,
-        .release = kernel_release
+        .init = network_init,
+        .save = network_save,
+        .load = network_load,
+        .remove = network_remove,
+        .release = network_release
 };
+
 
 /* ************************************************************ */
 
@@ -54,9 +61,7 @@ static int __init netmalloc_init_module(void)
         replace_syscall(SYSCALL_NI1, (ulong)netmalloc_syscall);
         replace_syscall(SYSCALL_NI2, (ulong)netfree_syscall);
 
-        generic_malloc_init(&storage_ops);
-
-        return 0;
+        return generic_malloc_init(&storage_ops, server);
 }
 
 static void __exit netmalloc_exit_module(void)

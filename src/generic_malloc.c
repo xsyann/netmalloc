@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sat May 24 02:03:25 2014 xsyann
+** Last update Sat May 24 18:55:29 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -317,14 +317,23 @@ void *generic_malloc(unsigned long size)
         return start;
 }
 
-void generic_malloc_init(struct storage_ops *s_ops)
+int generic_malloc_init(struct storage_ops *s_ops, void *param)
 {
+        int error;
+
         storage_ops = s_ops;
+
+        if ((error = storage_ops->init(param))) {
+                PR_WARN(NETMALLOC_WARN_STORAGE);
+                return error;
+        }
+
         init_area_list(&area_list);
         init_stored_pages(&stored_pages);
         init_buffers(&buffers);
 
         sema_init(&sem, 1);
+        return 0;
 }
 
 void generic_malloc_clean(void)
