@@ -7,10 +7,11 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
     git clone https://github.com/xsyann/netmalloc.git
     make
-    make load
+    sudo insmod netmalloc.ko server=127.0.0.1:12345
 
 ###Test
 
+    python server/server.py -l 127.0.0.1 -p 12345
     ./run.sh
 
 
@@ -105,7 +106,7 @@ When an **area**/**VMA** is created/extended, the size is always a multiple of `
 When the fault handler is called, the page corresponding to virtual address is filled (from storage) and mapped in the user address space.
 Two page at a time can be mapped in user address space for each process / threads.
 
-A static list keeps track of mapped buffers for each pid.
+A static list keeps track of mapped buffers for each pid and another list keeps track of all stored pages to avoid useless requests to storage.
 
 When the fault handler is called and two pages are already mapped in the user memory of this process, the oldest page is unmapped, stored (to storage) and, then, the requested page is mapped.
 
