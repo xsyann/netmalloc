@@ -262,3 +262,10 @@ If generic_alloc is called and, then, a fault occurs in another thread (before g
     = GOOD
 
 The vm operations close handler can't be locked because it is called by do_munmap (when a VMA is removed) in the generic_free function which is locked.
+
+###To Do
+
+- Unmap page at allocation only if the allocated region overlap a page in mapped_buffer or his cache.
+- Protect close function for the case where it is doesn't call from generic_free() (when the process is finished without calling free)
+- Use an area list per pid instead of an "area pool" to avoid iterate all areas when searching for an area for a pid.
+
