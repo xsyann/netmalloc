@@ -11,7 +11,7 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
 ###Test
 
-    python server/server.py -l 127.0.0.1 -p 12345
+    python server/server.py -l localhost -p 12345
     ./run.sh
 
 
@@ -266,6 +266,7 @@ The vm operations close handler can't be locked because it is called by do_munma
 ###To Do
 
 - Unmap page at allocation only if the allocated region overlap a page in mapped_buffer or his cache.
+- Do not save the page in generic_free if possible.
 - Protect close function for the case where it is doesn't call from generic_free() (when the process is finished without calling free)
 - Use an area list per pid instead of an "area pool" to avoid iterate all areas when searching for an area for a pid.
 
