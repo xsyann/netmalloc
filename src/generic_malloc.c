@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sun May 25 09:06:58 2014 xsyann
+** Last update Sun May 25 09:13:13 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -204,16 +204,15 @@ static int unmap_page(pid_t pid, int cache)
         if (buffer == NULL)
                 return 0;
 
-        if (cache)
+        if (cache) {
                 if (buffer->cache_vma) {
                         /* Unmap cache */
                         swap_buffer_cache(buffer);
                         return unmap_buffer(buffer);
                 }
-                else
-                        swap_buffer_cache(buffer);
-        else
-        {
+                swap_buffer_cache(buffer);
+        }
+        else {
                 if (buffer->vma) /* Unmap cache */
                         if ((error = unmap_buffer(buffer)))
                                 return error;
@@ -294,12 +293,6 @@ static void generic_malloc_vm_close(struct vm_area_struct *vma)
 
         PR_DEBUG(D_MIN, "Close call pid = %d, vma = %016lx", current->pid, vma->vm_start);
         PR_DEBUG(D_MIN, "Close exec pid = %d, vma = %016lx", current->pid, vma->vm_start);
-
-        /* To avoid unmapping in closed vma */
-        list_for_each_entry(buffer, &buffers.list, list) {
-                if (buffer->vma == vma)
-                        buffer->vma = NULL;
-        }
 
         close_vma(vma);
 
