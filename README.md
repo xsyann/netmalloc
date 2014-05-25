@@ -103,11 +103,11 @@ When an **area**/**VMA** is created/extended, the size is always a multiple of `
 #####Fault Handler
 
 When the fault handler is called, the page corresponding to virtual address is filled (from storage) and mapped in the user address space.
-One page at a time is mapped in user address space for each process / threads.
+Two page at a time can be mapped in user address space for each process / threads.
 
 A static list keeps track of mapped buffers for each pid.
 
-When the fault handler is called and a page is already mapped in the user memory of this process, the old page is unmapped, stored (to storage) and, then, the requested page is mapped.
+When the fault handler is called and two pages are already mapped in the user memory of this process, the oldest page is unmapped, stored (to storage) and, then, the requested page is mapped.
 
 ---------------------------------------
 ###Generic_malloc
