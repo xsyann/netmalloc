@@ -7,10 +7,11 @@ malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
 
     git clone https://github.com/xsyann/netmalloc.git
     make
-    make load
+    sudo insmod netmalloc.ko server=127.0.0.1:12345
 
 ###Test
 
+    python server/server.py -l localhost -p 12345
     ./run.sh
 
 
@@ -103,11 +104,11 @@ When an **area**/**VMA** is created/extended, the size is always a multiple of `
 #####Fault Handler
 
 When the fault handler is called, the page corresponding to virtual address is filled (from storage) and mapped in the user address space.
-One page at a time is mapped in user address space for each process / threads.
+Two page at a time can be mapped in user address space for each process / threads.
 
-A static list keeps track of mapped buffers for each pid.
+A static list keeps track of mapped buffers for each pid and another list keeps track of all stored pages to avoid useless requests to storage.
 
-When the fault handler is called and a page is already mapped in the user memory of this process, the old page is unmapped, stored (to storage) and, then, the requested page is mapped.
+When the fault handler is called and two pages are already mapped in the user memory of this process, the oldest page is unmapped, stored (to storage) and, then, the requested page is mapped.
 
 ---------------------------------------
 ###Generic_malloc
@@ -261,3 +262,11 @@ If generic_alloc is called and, then, a fault occurs in another thread (before g
     = GOOD
 
 The vm operations close handler can't be locked because it is called by do_munmap (when a VMA is removed) in the generic_free function which is locked.
+
+###To Do
+
+- Unmap page at allocation only if the allocated region overlap a page in mapped_buffer or his cache.
+- Do not save the page in generic_free if possible.
+- Protect close function for the case where it is doesn't call from generic_free() (when the process is finished without calling free)
+- Use an area list per pid instead of an "area pool" to avoid iterate all areas when searching for an area for a pid.
+
