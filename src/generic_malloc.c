@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sun May 25 06:02:38 2014 xsyann
+** Last update Sun May 25 06:42:50 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -301,8 +301,8 @@ static int generic_malloc_vm_fault(struct vm_area_struct *vma,
         page = generic_malloc_get_page(current->pid, address, vma);
         if (page == NULL) {
                 up(&sem);
-                PR_WARN(NETMALLOC_WARN_PAGE);
-                return VM_FAULT_RETRY;
+                PR_WARN(NETMALLOC_WARN_PAGE, address);
+                return VM_FAULT_SIGBUS;
         }
 
         /* Debug */

@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Sun May 25 06:03:52 2014 xsyann
+## Last update Sun May 25 06:52:16 2014 xsyann
 ##
 
 """
@@ -16,13 +16,13 @@ Authors: Nicolas de Thore, Yann Koeth
 """
 
 import socket
+from socket import error as SocketError
+import errno
 import threading
 import SocketServer
 import time
 import ctypes
 from ctypes import *
-
-pages = {}
 
 class Protocol(Structure):
 
@@ -45,13 +45,21 @@ class Protocol(Structure):
 
 class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
 
+    pages = {}
+
     def handle(self):
         currentThread = threading.current_thread()
         print "New Client", currentThread.name
 
         while True:
             p = Protocol()
-            data = self.request.recv(ctypes.sizeof(p))
+            data = ""
+            try:
+                data = self.request.recv(ctypes.sizeof(p))
+            except SocketError as e:
+                if e.errno != errno.ECONNRESET:
+                    raise
+                print "Connection closed", currentThread.name
             if not data:
                 break
             p.pack(data)
@@ -60,31 +68,31 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
                 print "PUT pid = {}, address = {}".format(p.pid, hex(p.address))
                 data = self.request.recv(Protocol.PAGE_SIZE)
                 print "Received {} bytes".format(len(data))
-                if p.pid in pages:
-                    pages[p.pid][p.address] = data
+                if p.pid in self.pages:
+                    self.pages[p.pid][p.address] = data
                 else:
-                    pages[p.pid] = { p.address: data }
+                    self.pages[p.pid] = { p.address: data }
 
             elif p.command == Protocol.GET:
                 print "GET pid = {}, address = {}".format(p.pid, hex(p.address))
                 page = chr(0) * Protocol.PAGE_SIZE
-                if p.pid in pages:
-                    pid_pages = pages[p.pid]
+                if p.pid in self.pages:
+                    pid_pages = self.pages[p.pid]
                     if p.address in pid_pages:
                         page = pid_pages[p.address]
                 self.request.send(page)
 
             elif p.command == Protocol.RM:
                 print "RM pid = {}, address = {}".format(p.pid, hex(p.address))
-                if p.pid in pages:
-                    pid_pages = pages[p.pid]
+                if p.pid in self.pages:
+                    pid_pages = self.pages[p.pid]
                     if p.address in pid_pages:
                         del pid_pages[p.address]
             elif p.command == Protocol.RELEASE:
                 print "RELEASE"
-                pages.clear()
+                self.pages.clear()
 
-            print "Pages stored: ", sum([len(add) for add in pages.values()])
+            print "Pages stored: ", sum([len(add) for add in self.pages.values()])
 
         print "Client quit", currentThread.name
 

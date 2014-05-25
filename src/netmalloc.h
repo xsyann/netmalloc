@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:53 2014 xsyann
-** Last update Sat May 24 18:52:39 2014 xsyann
+** Last update Sun May 25 06:42:22 2014 xsyann
 */
 
 #ifndef         __NETMALLOC_H__
@@ -20,7 +20,7 @@
 
 #define NETMALLOC_WARN_SYMNOTFOUND "insert_vm_struct symbol not found"
 #define NETMALLOC_WARN_VMA "Unable to create vm area"
-#define NETMALLOC_WARN_PAGE "Unable to get a memory page"
+#define NETMALLOC_WARN_PAGE "Unable to get page %016lx"
 #define NETMALLOC_WARN_STORAGE "Unable to init storage"
 
 #endif          /* __NETMALLOC_H__ */
