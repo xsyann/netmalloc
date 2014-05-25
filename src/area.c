@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Tue May 20 04:14:57 2014 xsyann
-** Last update Sat May 24 22:13:58 2014 xsyann
+** Last update Sun May 25 04:29:48 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -234,17 +234,16 @@ void dump_area_list(struct area_struct *area_list)
         struct area_struct *area;
         struct region_struct *region;
 
-        PR_DEBUG(D_MED, "");
-        PR_DEBUG(D_MED, "Area list :");
+        PR_DEBUG(D_AREA, "Area list:");
         list_for_each_entry(area, &area_list->list, list) {
-                PR_DEBUG(D_MED, "- VMA : size = %ld, pid = %d, freespace = %ld",
-                        area->size, area->pid, area->free_space);
+                PR_DEBUG(D_AREA, "- Area: pid = %d, size = %ld, freespace = %ld",
+                         area->pid, area->size, area->free_space);
                 list_for_each_entry(region, &area->regions.list, list) {
-                        PR_DEBUG(D_MED, "   - Region, size = %ld, start = %p, free = %d",
-                                 region->size, region->virtual_start, region->free);
+                        PR_DEBUG(D_AREA, "   - Region: start = %p, size = %ld, free = %d",
+                                 region->virtual_start, region->size, region->free);
                 }
         }
-              PR_DEBUG(D_MED, "");
+              PR_DEBUG(D_AREA, "");
 }
 
 /* Return 1 if address is a valid virtual address and 0 if not. */

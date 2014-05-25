@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 01:46:14 2014 xsyann
-** Last update Sat May 24 01:57:03 2014 xsyann
+** Last update Sun May 25 04:13:37 2014 xsyann
 */
 
 #ifndef         __MAPPED_BUFFER_H__
@@ -25,5 +25,7 @@ void remove_buffer(pid_t pid, struct mapped_buffer *buffers);
 struct mapped_buffer *add_buffer(pid_t pid, struct mapped_buffer *buffers);
 void init_buffers(struct mapped_buffer *buffers);
 void remove_buffers(struct mapped_buffer *buffers);
+
+void dump_buffers(struct mapped_buffer *buffers);
 
 #endif          /* __MAPPED_BUFFER_H__ */

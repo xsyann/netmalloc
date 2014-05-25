@@ -5,12 +5,13 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 00:47:48 2014 xsyann
-** Last update Sat May 24 00:57:52 2014 xsyann
+** Last update Sun May 25 05:55:13 2014 xsyann
 */
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/list.h>
+#include "kutils.h"
 #include "stored_page.h"
 
 /* Add a stored_page */
@@ -54,6 +55,18 @@ void remove_stored_page(pid_t pid, unsigned long start,
                         break;
                 }
         }
+}
+
+/* Print all stored pages */
+void dump_stored_pages(struct stored_page *stored_pages)
+{
+        struct stored_page *page;
+        unsigned int i = 0;
+
+        PR_DEBUG(D_STO, "Stored pages:");
+        list_for_each_entry(page, &stored_pages->list, list)
+                PR_DEBUG(D_STO, "- Page %d: pid = %d, address = %016lx", ++i, page->pid, page->start);
+        PR_DEBUG(D_STO, "");
 }
 
 /* Init stored pages list */

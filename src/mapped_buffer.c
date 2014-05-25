@@ -5,11 +5,12 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 01:49:48 2014 xsyann
-** Last update Sat May 24 01:57:04 2014 xsyann
+** Last update Sun May 25 04:03:17 2014 xsyann
 */
 
 #include <linux/list.h>
 #include <linux/slab.h>
+#include "kutils.h"
 #include "mapped_buffer.h"
 
 /* Return the buffer associated with pid */
@@ -55,6 +56,17 @@ struct mapped_buffer *add_buffer(pid_t pid, struct mapped_buffer *buffers)
         INIT_LIST_HEAD(&buffer->list);
         list_add_tail(&buffer->list, &buffers->list);
         return buffer;
+}
+
+/* Print buffers */
+void dump_buffers(struct mapped_buffer *buffers)
+{
+        struct mapped_buffer *buffer;
+
+        PR_DEBUG(D_BUF, "Buffers:");
+        list_for_each_entry(buffer, &buffers->list, list)
+                PR_DEBUG(D_BUF, "- Buffer: pid = %d, address = %016lx", buffer->pid, buffer->start);
+        PR_DEBUG(D_BUF, "");
 }
 
 /* Init buffer list */

@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Sat May 24 22:23:18 2014 xsyann
+## Last update Sun May 25 06:03:52 2014 xsyann
 ##
 
 """
@@ -31,6 +31,8 @@ class Protocol(Structure):
 
     PUT = 1
     GET = 2
+    RM = 3
+    RELEASE = 4
 
     _fields_ = [("command", c_int),
                 ("pid", c_int),
@@ -63,7 +65,7 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
                 else:
                     pages[p.pid] = { p.address: data }
 
-            if p.command == Protocol.GET:
+            elif p.command == Protocol.GET:
                 print "GET pid = {}, address = {}".format(p.pid, hex(p.address))
                 page = chr(0) * Protocol.PAGE_SIZE
                 if p.pid in pages:
@@ -71,6 +73,18 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
                     if p.address in pid_pages:
                         page = pid_pages[p.address]
                 self.request.send(page)
+
+            elif p.command == Protocol.RM:
+                print "RM pid = {}, address = {}".format(p.pid, hex(p.address))
+                if p.pid in pages:
+                    pid_pages = pages[p.pid]
+                    if p.address in pid_pages:
+                        del pid_pages[p.address]
+            elif p.command == Protocol.RELEASE:
+                print "RELEASE"
+                pages.clear()
+
+            print "Pages stored: ", sum([len(add) for add in pages.values()])
 
         print "Client quit", currentThread.name
 

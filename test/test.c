@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:46:35 2014 xsyann
-** Last update Sat May 24 22:13:06 2014 xsyann
+** Last update Sun May 25 06:03:34 2014 xsyann
 */
 
 #include <sys/syscall.h>
@@ -16,19 +16,9 @@
 #include <stdio.h>
 #include <pthread.h>
 
-#define NETMALLOC_SYSCALL __NR_tuxcall
-#define NETFREE_SYSCALL __NR_security
+#include "netmalloc.h"
+
 #define PAGE_SIZE (1 << 12)
-
-void *netmalloc(unsigned long size)
-{
-        return (void *)syscall(NETMALLOC_SYSCALL, size);
-}
-
-void netfree(void *ptr)
-{
-        syscall(NETFREE_SYSCALL, ptr);
-}
 
 void dump_buffer(char *buffer, size_t size, const char *page_marker)
 {
@@ -101,7 +91,7 @@ int main(void)
         sprintf(buf2 + 8100, "tata");
         printf("tata: %s\n", buf2 + 8100);
 
-        printf("titi i: %s %c\n", buf1, buf1[1]);
+        printf("titi: %s\n", buf1);
 
         netfree(buf1);
 

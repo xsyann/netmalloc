@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Fri May  9 11:34:27 2014 xsyann
-** Last update Sat May 24 19:02:01 2014 xsyann
+** Last update Sun May 25 03:36:11 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -66,11 +66,11 @@ static int __init netmalloc_init_module(void)
 
 static void __exit netmalloc_exit_module(void)
 {
-        PR_INFO(NETMALLOC_INFO_UNLOAD);
         restore_syscall(SYSCALL_NI2);
         restore_syscall(SYSCALL_NI1);
 
         generic_malloc_clean();
+        PR_INFO(NETMALLOC_INFO_UNLOAD);
 }
 
 module_init(netmalloc_init_module);

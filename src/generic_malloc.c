@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sat May 24 18:55:29 2014 xsyann
+** Last update Sun May 25 06:02:38 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -35,6 +35,49 @@ static struct semaphore sem;
 
 /* ************************************************************ */
 
+/* Return 1 if the page at address can be removed.
+ * A page can be removed when 'region' is the only region
+ * between address and address + PAGE_SIZE. */
+int can_remove_page(unsigned long address,
+                    struct region_struct *region,
+                    struct region_struct *regions)
+{
+        struct region_struct *prev = NULL;
+        struct region_struct *next = NULL;
+        unsigned long prev_end, next_start;
+        struct list_head *item;
+
+        if (!list_is_first(&region->list, &regions->list)) {
+                /* Find the first previous used region */
+                prev = region;
+                item = &region->list;
+                while ((item = item->prev) &&
+                       (item != &regions->list) &&
+                       ((prev = list_entry(item, struct region_struct, list))->free));
+                       prev_end = (unsigned long)prev->virtual_start + prev->size;
+                prev_end = align_ceil(prev_end, PAGE_SHIFT);
+
+                if (prev_end > address)
+                        return 0;
+        }
+
+        if (!list_is_last(&region->list, &regions->list)) {
+                /* Find the first next used region */
+                next = region;
+                item = &region->list;
+                while ((item = item->next) &&
+                       (item != &regions->list) &&
+                       ((next = list_entry(item, struct region_struct, list))->free));
+                next_start = (unsigned long)next->virtual_start;
+                next_start = align_floor(next_start, PAGE_SHIFT);
+
+                if (next_start < address + PAGE_SIZE)
+                        return 0;
+        }
+
+        return 1;
+}
+
 /* Remove all pages in storage for region at address */
 void remove_storage_pages(pid_t pid, unsigned long address)
 {
@@ -42,37 +85,42 @@ void remove_storage_pages(pid_t pid, unsigned long address)
         struct region_struct *region;
         unsigned long start, end;
 
-        area = get_area(pid, address, &area_list);
-        if (area) {
-                region = get_region(area, address);
-                if (region) {
-                        start = (unsigned long)region->virtual_start;
-                        end = (unsigned long)region->virtual_start + region->size;
-                        /* Page align */
-                        start = align_floor(start, PAGE_SHIFT);
-                        end = align_ceil(end, PAGE_SHIFT);
-                        for (; start < end; start += PAGE_SIZE)
-                                if (is_stored_page(pid, start, &stored_pages)) {
-                                        PR_DEBUG(D_MED, "Remove data at %016lx, pid = %d",
-                                                 start, pid);
-                                        storage_ops->remove(pid, start);
-                                        remove_stored_page(pid, start, &stored_pages);
-                                }
-                }
-        }
+        if ((area = get_area(pid, address, &area_list)) == NULL)
+                return;
+        if ((region = get_region(area, address)) == NULL)
+                return;
+
+        PR_DEBUG(D_MED, "Remove region: size = %ld, pid = %d, address = %016lx",
+                 region->size, area->pid, address);
+
+        start = (unsigned long)region->virtual_start;
+        end = start + region->size;
+        /* Page align */
+        start = align_floor(start, PAGE_SHIFT);
+        end = align_ceil(end, PAGE_SHIFT);
+        for (; start < end; start += PAGE_SIZE)
+                if (is_stored_page(pid, start, &stored_pages))
+                        if (can_remove_page(start, region, &area->regions)) {
+                                PR_DEBUG(D_MAX, "Storage remove: pid = %d, address = %016lx (page %ld)",
+                                         pid, start, ADDR_OFFSET(area->vma->vm_start, start));
+                                storage_ops->remove(pid, start);
+                                remove_stored_page(pid, start, &stored_pages);
+                        }
 }
 
 /* Free area regions from storage and remove from list
- * Free pid buffer if no more vma for pid. */
+ * Free buffer 'pid' if no more vma for pid. */
 static void close_vma(struct vm_area_struct *vma)
 {
         struct area_struct *area;
         struct region_struct *region, *tmp_region;
+        unsigned long start;
 
         list_for_each_entry(area, &area_list.list, list) {
                 if (area->vma == vma) {
                         list_for_each_entry_safe(region, tmp_region,
                                                  &area->regions.list, list) {
+                                start = (unsigned long)region->virtual_start;
                                 remove_storage_pages(area->pid,
                                                      (unsigned long)region->virtual_start);
                                 list_del(&region->list);
@@ -96,14 +144,18 @@ static int copy_page_from_user(pid_t pid, unsigned long start,
         int res;
 
         res = get_user_pages(NULL, vma->vm_mm, start, 1, 0, 0, &page, NULL);
-        PR_DEBUG(D_MED, "Get user page success = %d, pid = %d", res, pid);
         if (res == 1) {
                 buffer = kmap(page);
                 if (buffer == NULL)
                         return -ENOMEM;
-                storage_ops->save(pid, start, buffer);
-                if (add_stored_page(pid, start, &stored_pages) == NULL)
-                        return -ENOMEM;
+                res = storage_ops->save(pid, start, buffer);
+                PR_DEBUG(D_MED, "Storage save: pid = %d, address = %016lx (page %ld), count = %d",
+                         pid, start, ADDR_OFFSET(vma->vm_start, start), res);
+                if (res < 0)
+                        return res;
+                if (!is_stored_page(pid, start, &stored_pages))
+                    if (add_stored_page(pid, start, &stored_pages) == NULL)
+                            return -ENOMEM;
                 kunmap(page);
                 put_page(page);
         }
@@ -127,13 +179,12 @@ static int remove_user_page(unsigned long start, struct vm_area_struct *vma)
  * Remove page from user address space (remove_user_page). */
 static int unmap_page(pid_t pid)
 {
+        int error;
         struct mapped_buffer *buffer = get_buffer(pid, &buffers);
 
         if (buffer && buffer->vma && is_existing_vma(buffer->vma)) {
-                if (copy_page_from_user(buffer->pid, buffer->start, buffer->vma))
-                        return -1;
-                PR_DEBUG(D_MED, "Store data at %016lx (page %ld) pid = %d", buffer->start,
-                         (buffer->start - buffer->vma->vm_start) >> PAGE_SHIFT, pid);
+                if ((error = copy_page_from_user(buffer->pid, buffer->start, buffer->vma)))
+                        return error;
                 if (remove_user_page(buffer->start, buffer->vma))
                         return -1;
                 buffer->vma = NULL;
@@ -145,6 +196,7 @@ static int unmap_page(pid_t pid)
 static struct page *map_page(pid_t pid, unsigned long address,
                              struct vm_area_struct *vma)
 {
+        int res;
         struct page *page;
         struct mapped_buffer *buffer = get_buffer(pid, &buffers);
 
@@ -158,12 +210,18 @@ static struct page *map_page(pid_t pid, unsigned long address,
 
         /* Load data from storage */
         if (is_stored_page(pid, address, &stored_pages)) {
-                storage_ops->load(pid, address, buffer->buffer);
-                PR_DEBUG(D_MED, "Load data at %016lx (page %ld) pid = %d",
-                         address, (address - vma->vm_start) >> PAGE_SHIFT, pid);
+                res = storage_ops->load(pid, address, buffer->buffer);
+                PR_DEBUG(D_MED, "Storage load: pid = %d, address = %016lx (page %ld), count = %d",
+                         pid, address, ADDR_OFFSET(vma->vm_start, address), res);
+               if (res < 0)
+                       return NULL;
         }
         else
+        {
+                PR_DEBUG(D_MED, "New page: pid = %d, address = %016lx (page %ld)",
+                         pid, address, ADDR_OFFSET(vma->vm_start, address));
                 memset(buffer->buffer, 0, PAGE_SIZE);
+        }
         if (vm_insert_page(vma, address, page))
                 return NULL;
         buffer->vma = vma;
@@ -201,8 +259,8 @@ static void generic_malloc_vm_close(struct vm_area_struct *vma)
 {
         struct mapped_buffer *buffer;
 
-        PR_DEBUG(D_MIN, "Close call pid = %d, vma = %p", current->pid, vma);
-        PR_DEBUG(D_MIN, "Close exec pid = %d, vma = %p", current->pid, vma);
+        PR_DEBUG(D_MIN, "Close call pid = %d, vma = %016lx", current->pid, vma->vm_start);
+        PR_DEBUG(D_MIN, "Close exec pid = %d, vma = %016lx", current->pid, vma->vm_start);
 
         /* To avoid unmapping in closed vma */
         list_for_each_entry(buffer, &buffers.list, list) {
@@ -211,6 +269,11 @@ static void generic_malloc_vm_close(struct vm_area_struct *vma)
         }
 
         close_vma(vma);
+
+        /* Debug */
+        dump_buffers(&buffers);
+        dump_stored_pages(&stored_pages);
+        dump_area_list(&area_list);
 
         PR_DEBUG(D_MIN, "Close end pid = %d, vma = %p\n", current->pid, vma);
 }
@@ -241,6 +304,10 @@ static int generic_malloc_vm_fault(struct vm_area_struct *vma,
                 PR_WARN(NETMALLOC_WARN_PAGE);
                 return VM_FAULT_RETRY;
         }
+
+        /* Debug */
+        dump_buffers(&buffers);
+        dump_stored_pages(&stored_pages);
 
         vmf->page = page;
 
@@ -275,7 +342,10 @@ void generic_free(void *ptr)
         remove_storage_pages(pid, (unsigned long)ptr);
         remove_region(pid, (unsigned long)ptr, &area_list);
 
-        dump_area_list(&area_list); /* Debug */
+        /* Debug */
+        dump_buffers(&buffers);
+        dump_stored_pages(&stored_pages);
+        dump_area_list(&area_list);
 
         up(&sem);
         up_write(&current->mm->mmap_sem);
@@ -284,8 +354,9 @@ void generic_free(void *ptr)
 
 void *generic_malloc(unsigned long size)
 {
+        int error;
         struct region_struct *region;
-        void *start;
+        void *start = NULL;
 
         PR_DEBUG(D_MIN, "Alloc call for %ld bytes in process %d (%s)",
                  size, current->pid, current->comm);
@@ -296,23 +367,26 @@ void *generic_malloc(unsigned long size)
                  size, current->pid, current->comm);
 
         region = create_region(size, current, &area_list, &vm_ops);
-        if (region == NULL) {
-                up(&sem);
-                return NULL;
-        }
+        if (region == NULL)
+                goto out;
 
         /* Unmap old page to be sure to reload data if region is created in the
            same vma page as the mapped current one. */
-        unmap_page(current->pid);
+        if ((error = unmap_page(current->pid)) < 0)
+                goto out;
 
-        dump_area_list(&area_list); /* Debug */
+        /* Debug */
+        dump_buffers(&buffers);
+        dump_stored_pages(&stored_pages);
+        dump_area_list(&area_list);
 
         start = region->virtual_start;
 
+out:
         up(&sem);
         up_write(&current->mm->mmap_sem);
-        PR_DEBUG(D_MIN, "Alloc end for %ld bytes in process %d (%s)\n",
-                 size, current->pid, current->comm);
+        PR_DEBUG(D_MIN, "Alloc end for %ld bytes in process %d (%s) - return %p\n",
+                 size, current->pid, current->comm, start);
 
         return start;
 }
@@ -338,7 +412,11 @@ int generic_malloc_init(struct storage_ops *s_ops, void *param)
 
 void generic_malloc_clean(void)
 {
+        /* Debug */
+        dump_buffers(&buffers);
+        dump_stored_pages(&stored_pages);
         dump_area_list(&area_list);
+
         remove_buffers(&buffers);
         remove_stored_pages(&stored_pages);
         remove_area_list(&area_list);

@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 11:11:01 2014 xsyann
-** Last update Sat May 24 21:53:28 2014 xsyann
+** Last update Sun May 25 03:27:14 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -64,9 +64,9 @@ int network_load(pid_t pid, unsigned long address, void *buffer)
 
         size = socket_send(socket, &protocol_header, sizeof(protocol_header));
         if (size == sizeof(protocol_header))
-                socket_recv(socket, buffer, PAGE_SIZE);
+                size = socket_recv(socket, buffer, PAGE_SIZE);
 
-        return 0;
+        return size;
 }
 
 int network_save(pid_t pid, unsigned long address, void *buffer)
@@ -82,15 +82,31 @@ int network_save(pid_t pid, unsigned long address, void *buffer)
         if (size == sizeof(protocol_header))
                 size = socket_send(socket, buffer, PAGE_SIZE);
 
-        return 0;
+        return size;
 }
 
 void network_remove(pid_t pid, unsigned long address)
 {
+        int size = 0;
+        struct protocol_header protocol_header = {
+                .command = PROTOCOL_RM,
+                .pid = pid,
+                .address = address,
+        };
+        size = socket_send(socket, &protocol_header, sizeof(protocol_header));
 }
 
 void network_release(void)
 {
+        int size = 0;
+        struct protocol_header protocol_header = {
+                .command = PROTOCOL_RELEASE,
+                .pid = 0,
+                .address = 0,
+        };
+
+        size = socket_send(socket, &protocol_header, sizeof(protocol_header));
+
         socket_release(socket);
 }
 

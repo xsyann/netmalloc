@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 00:46:14 2014 xsyann
-** Last update Sat May 24 00:55:46 2014 xsyann
+** Last update Sun May 25 04:17:08 2014 xsyann
 */
 
 #ifndef         __STORED_PAGE_H__
@@ -27,5 +27,7 @@ void remove_stored_page(pid_t pid, unsigned long start,
 
 void init_stored_pages(struct stored_page *stored_pages);
 void remove_stored_pages(struct stored_page *stored_pages);
+
+void dump_stored_pages(struct stored_page *stored_pages);
 
 #endif          /* __STORED_PAGE_H__ */
