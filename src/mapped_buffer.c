@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 01:49:48 2014 xsyann
-** Last update Sun May 25 04:03:17 2014 xsyann
+** Last update Sun May 25 08:49:35 2014 xsyann
 */
 
 #include <linux/list.h>
@@ -24,6 +24,25 @@ struct mapped_buffer *get_buffer(pid_t pid, struct mapped_buffer *buffers)
         return NULL;
 }
 
+void swap_buffer_cache(struct mapped_buffer *buffer)
+{
+        void *buf;
+        struct vm_area_struct *vma;
+        unsigned long start;
+
+        buf = buffer->buffer;
+        vma = buffer->vma;
+        start = buffer->start;
+
+        buffer->buffer = buffer->cache;
+        buffer->vma = buffer->cache_vma;
+        buffer->start = buffer->cache_start;
+
+        buffer->cache = buf;
+        buffer->cache_vma = vma;
+        buffer->cache_start = start;
+}
+
 /* Free buffer associated with pid */
 void remove_buffer(pid_t pid, struct mapped_buffer *buffers)
 {
@@ -33,6 +52,8 @@ void remove_buffer(pid_t pid, struct mapped_buffer *buffers)
         if (buffer) {
                 if (buffer->buffer)
                         vfree(buffer->buffer);
+                if (buffer->cache)
+                        vfree(buffer->cache);
                 list_del(&buffer->list);
                 kfree(buffer);
         }
@@ -52,7 +73,14 @@ struct mapped_buffer *add_buffer(pid_t pid, struct mapped_buffer *buffers)
                 kfree(buffer);
                 return NULL;
         }
+        buffer->cache = vmalloc_user(PAGE_SIZE);
+        if (buffer->cache == NULL) {
+                kfree(buffer->buffer);
+                kfree(buffer);
+                return NULL;
+        }
         buffer->vma = NULL;
+        buffer->cache_vma = NULL;
         INIT_LIST_HEAD(&buffer->list);
         list_add_tail(&buffer->list, &buffers->list);
         return buffer;
@@ -83,6 +111,8 @@ void remove_buffers(struct mapped_buffer *buffers)
         list_for_each_entry_safe(buffer, tmp, &buffers->list, list) {
                 if (buffer->buffer)
                         vfree(buffer->buffer);
+                if (buffer->cache)
+                        vfree(buffer->cache);
                 list_del(&buffer->list);
                 kfree(buffer);
         }

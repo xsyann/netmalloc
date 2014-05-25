@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sun May 25 02:14:44 2014 xsyann
-** Last update Sun May 25 07:18:35 2014 xsyann
+** Last update Sun May 25 08:56:46 2014 xsyann
 */
 
 #include <stdio.h>
@@ -28,13 +28,15 @@ char *my_strcpy(char *s1, const char *s2)
 
 int main(void)
 {
-        // char *buffer = netmalloc(5120);
-        // sprintf(buffer, "toto");
-//        sprintf(buffer + 4094, "foobar"); -> BUG
-        //      strcpy(buffer + 4094, "foobar"); -> BUG
-        my_strcpy(buffer + 4094, "foobar");
+        char *buffer = netmalloc(5120);
+        sprintf(buffer, "toto");
+        sprintf(buffer + 4094, "foobar"); //-> BUG
+//        strcpy(buffer + 4094, "foobar"); //-> BUG
+//        my_strcpy(buffer + 4094, "foobar");
+//        my_strcpy(buffer + 14094, "fiibee");
         printf("toto = %s\n", buffer);
         printf("foobar = %s\n", buffer + 4094);
+//        printf("fiibee = %s\n", buffer + 14094);
         netfree(buffer);
         return 0;
 }

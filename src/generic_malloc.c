@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sun May 25 06:42:50 2014 xsyann
+** Last update Sun May 25 09:06:58 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -177,17 +177,50 @@ static int remove_user_page(unsigned long start, struct vm_area_struct *vma)
 
 /* Copy userspace page to kernel and save data (copy_page_from_user).
  * Remove page from user address space (remove_user_page). */
-static int unmap_page(pid_t pid)
+static int unmap_buffer(struct mapped_buffer *buffer)
 {
         int error;
-        struct mapped_buffer *buffer = get_buffer(pid, &buffers);
 
-        if (buffer && buffer->vma && is_existing_vma(buffer->vma)) {
+        if (is_existing_vma(buffer->vma)) {
                 if ((error = copy_page_from_user(buffer->pid, buffer->start, buffer->vma)))
                         return error;
                 if (remove_user_page(buffer->start, buffer->vma))
                         return -1;
+                PR_DEBUG(D_MED, "Remove user page: pid = %d, address = %016lx",
+                        buffer->pid, buffer->start);
                 buffer->vma = NULL;
+        }
+        return 0;
+}
+
+
+/* Unmap page for pid if needed. If cache is set try to cache the current page.
+ * If cache is not set, unmap buffer and cache. */
+static int unmap_page(pid_t pid, int cache)
+{
+        int error = 0;
+        struct mapped_buffer *buffer = get_buffer(pid, &buffers);
+
+        if (buffer == NULL)
+                return 0;
+
+        if (cache)
+                if (buffer->cache_vma) {
+                        /* Unmap cache */
+                        swap_buffer_cache(buffer);
+                        return unmap_buffer(buffer);
+                }
+                else
+                        swap_buffer_cache(buffer);
+        else
+        {
+                if (buffer->vma) /* Unmap cache */
+                        if ((error = unmap_buffer(buffer)))
+                                return error;
+                if (buffer->cache_vma) { /* Unmap buffer */
+                        swap_buffer_cache(buffer);
+                        return unmap_buffer(buffer);
+                }
         }
         return 0;
 }
@@ -237,7 +270,7 @@ static struct page *generic_malloc_get_page(pid_t pid,
         struct page *page;
 
         /* Unmap and save old */
-        if (unmap_page(pid))
+        if (unmap_page(pid, 1))
                 return NULL;
 
         /* Fill and map new */
@@ -338,7 +371,7 @@ void generic_free(void *ptr)
         PR_DEBUG(D_MIN, "Free exec %p, pid = %d", ptr, current->pid);
 
         pid = current->pid;
-        unmap_page(pid);
+        unmap_page(pid, 0);
         remove_storage_pages(pid, (unsigned long)ptr);
         remove_region(pid, (unsigned long)ptr, &area_list);
 
@@ -372,7 +405,7 @@ void *generic_malloc(unsigned long size)
 
         /* Unmap old page to be sure to reload data if region is created in the
            same vma page as the mapped current one. */
-        if ((error = unmap_page(current->pid)) < 0)
+        if ((error = unmap_page(current->pid, 0)) < 0)
                 goto out;
 
         /* Debug */
