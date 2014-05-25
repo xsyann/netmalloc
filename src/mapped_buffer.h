@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 01:46:14 2014 xsyann
-** Last update Sun May 25 09:00:49 2014 xsyann
+** Last update Sun May 25 09:23:13 2014 xsyann
 */
 
 #ifndef         __MAPPED_BUFFER_H__

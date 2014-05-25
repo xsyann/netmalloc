@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Wed May 21 20:08:11 2014 xsyann
-** Last update Sun May 25 09:13:13 2014 xsyann
+** Last update Sun May 25 15:20:53 2014 xsyann
 */
 
 #include <linux/kernel.h>
@@ -289,7 +289,6 @@ static void generic_malloc_vm_open(struct vm_area_struct *vma)
 
 static void generic_malloc_vm_close(struct vm_area_struct *vma)
 {
-        struct mapped_buffer *buffer;
 
         PR_DEBUG(D_MIN, "Close call pid = %d, vma = %016lx", current->pid, vma->vm_start);
         PR_DEBUG(D_MIN, "Close exec pid = %d, vma = %016lx", current->pid, vma->vm_start);
