@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Mon May 26 14:53:56 2014 xs_yann
+## Last update Mon May 26 17:03:14 2014 xs_yann
 ##
 
 """
@@ -142,7 +142,7 @@ class NetMallocServer:
 if __name__ == "__main__":
     import argparse, sys
 
-    default = {'l': "localhost", 'p': 12345 }
+    default = {'l': "0.0.0.0", 'p': 12345 }
 
     parser = argparse.ArgumentParser(description="Net Malloc server.")
     parser.add_argument("-l", "--location", type=str,
