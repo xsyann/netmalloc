@@ -6,7 +6,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Thu May  8 12:10:57 2014 xsyann
-## Last update Sun May 25 06:52:16 2014 xsyann
+## Last update Mon May 26 14:53:56 2014 xs_yann
 ##
 
 """
@@ -47,6 +47,15 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
 
     pages = {}
 
+    def recvall(self, size):
+        data = ""
+        while len(data) < size:
+            packet = self.request.recv(size - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data
+
     def handle(self):
         currentThread = threading.current_thread()
         print "New Client", currentThread.name
@@ -55,19 +64,23 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
             p = Protocol()
             data = ""
             try:
-                data = self.request.recv(ctypes.sizeof(p))
+                data = self.recvall(ctypes.sizeof(p))
             except SocketError as e:
                 if e.errno != errno.ECONNRESET:
                     raise
                 print "Connection closed", currentThread.name
+                break
+
             if not data:
                 break
             p.pack(data)
 
             if p.command == Protocol.PUT:
                 print "PUT pid = {}, address = {}".format(p.pid, hex(p.address))
-                data = self.request.recv(Protocol.PAGE_SIZE)
+                data = self.recvall(Protocol.PAGE_SIZE)
                 print "Received {} bytes".format(len(data))
+                if not data:
+                    break
                 if p.pid in self.pages:
                     self.pages[p.pid][p.address] = data
                 else:
@@ -91,6 +104,10 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
             elif p.command == Protocol.RELEASE:
                 print "RELEASE"
                 self.pages.clear()
+            else:
+                print "Unknown command",
+                print p.command, p.pid, hex(p.address), len(data)
+                print repr(data)
 
             print "Pages stored: ", sum([len(add) for add in self.pages.values()])
 
@@ -138,5 +155,3 @@ if __name__ == "__main__":
 
     nms = NetMallocServer(args.location, args.port)
     nms.run()
-
-
