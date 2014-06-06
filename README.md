@@ -1,7 +1,7 @@
 netmalloc
 ============
 
-malloc for a LAN on Linux (TCP server and Universal Virtual Memory)
+Memory allocation over network on GNU/Linux (TCP server and Universal Virtual Memory)
 
 ###Install
 
@@ -263,6 +263,57 @@ If generic_alloc is called and, then, a fault occurs in another thread (before g
 
 The vm operations close handler can't be locked because it is called by do_munmap (when a VMA is removed) in the generic_free function which is locked.
 
+---------------------------------------
+###Networking
+
+**Protocol**
+
+Name    | COMMAND_ID
+------- | ----------
+PUT     |    1
+GET     |    2
+RM      |    3
+RELEASE |    4
+
+First block | 16 bytes
+----------- | --------
+COMMAND_ID  | 4 bytes
+pid         | 4 bytes
+address     | 8 bytes
+
+|              |   PUT   | GET  |  RM   | RELEASE |
+|:-------------|:-------:|:----:|:-----:|:-------:|
+|   Response   |   None  | 4096 | None  |  None   |
+| Second block |   4096  | None | None  |  None   |
+
+
+**Server**
+
+    usage: server.py [-h] [-l LOCATION] [-p PORT]
+
+    optional arguments:
+      -h, --help
+      -l LOCATION, --location LOCATION Host
+      -p PORT, --port PORT Port
+      
+Example: `python server/server.py -l 0.0.0.0 -p 12345`
+
+
+---------------------------------------
+###Debug
+
+Debug flags can be used to print debug informations to the kernel ring buffer (`dmesg` to show).
+
+`DEBUG_LEVEL` in `kutils.h` _l.14_, can contains these flags:
+
+- `D_MIN` - Minimum level (Fault, Alloc, Free, Close calls)
+- `D_MED` - Medium level (Storage operations, Region remove, etc)
+- `D_MAX` - Maximum level (Page remove)
+- `D_AREA` - Show Area list
+- `D_BUF` - Show mapped buffer list
+- `D_STO` - Show stored pages
+
+---------------------------------------
 ###To Do
 
 - Unmap page at allocation only if the allocated region overlap a page in mapped_buffer or his cache.
