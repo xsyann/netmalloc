@@ -5,7 +5,7 @@
 ** Contact <contact@xsyann.com>
 **
 ** Started on  Sat May 24 01:49:48 2014 xsyann
-** Last update Sun May 25 16:35:43 2014 xsyann
+** Last update Sun May 25 19:13:45 2014 xsyann
 */
 
 #include <linux/list.h>
@@ -92,8 +92,11 @@ void dump_buffers(struct mapped_buffer *buffers)
         struct mapped_buffer *buffer;
 
         PR_DEBUG(D_BUF, "Buffers:");
-        list_for_each_entry(buffer, &buffers->list, list)
+        list_for_each_entry(buffer, &buffers->list, list) {
                 PR_DEBUG(D_BUF, "- Buffer: pid = %d, address = %016lx", buffer->pid, buffer->start);
+                if (buffer->cache_vma)
+                        PR_DEBUG(D_BUF, "   - Cache: address = %016lx", buffer->cache_start);
+        }
         PR_DEBUG(D_BUF, "");
 }
 

@@ -5,7 +5,7 @@
 ## Contact <contact@xsyann.com>
 ##
 ## Started on  Fri May  9 11:31:36 2014 xsyann
-## Last update Sun May 25 16:27:18 2014 xsyann
+## Last update Fri Jun  6 13:06:55 2014 xsyann
 ##
 
 TARGET	= netmalloc
@@ -22,7 +22,7 @@ $(TARGET)-objs := $(SRC)/netmalloc.o $(SRC)/syscall.o \
 CURRENT = $(shell uname -r)
 KDIR	= /lib/modules/$(CURRENT)/build
 
-ARGS = "192.168.69.1:12345"
+server = "192.168.69.1:12345"
 
 all	:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
@@ -32,7 +32,7 @@ clean	:
 
 load	:
 	@sudo rmmod ./$(TARGET).ko 2> /dev/null || true
-	@sudo insmod ./$(TARGET).ko server=${ARGS}
+	@sudo insmod ./$(TARGET).ko server=${server}
 	@echo "Load $(TARGET).ko"
 
 unload	:
